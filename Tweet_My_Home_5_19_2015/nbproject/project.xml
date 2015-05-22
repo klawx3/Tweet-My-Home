@@ -4,7 +4,7 @@
     <configuration>
         <buildExtensions xmlns="http://www.netbeans.org/ns/ant-build-extender/1"/>
         <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
-            <name>Tweet My Home</name>
+            <name>Tweet_My_Home_5_19_2015</name>
             <source-roots>
                 <root id="src.dir"/>
             </source-roots>

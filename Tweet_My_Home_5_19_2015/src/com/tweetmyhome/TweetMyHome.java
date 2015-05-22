@@ -75,7 +75,7 @@ public final class TweetMyHome implements IODeviceEventListener,TwitterStatusCha
             trace("Testing Mode...");
             try {
                 testCode();
-            } catch (IOException | TweetStringException ex) {
+            } catch (Exception ex) {
                 error(ex.toString(),ex);
             }
         }
