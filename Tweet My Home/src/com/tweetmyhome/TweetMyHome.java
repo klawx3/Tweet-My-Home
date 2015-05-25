@@ -22,9 +22,11 @@ import com.tweetmyhome.exceptions.TweetStringException;
 import com.tweetmyhome.hardware.DeviceSensor;
 import com.tweetmyhome.hardware.IODeviceEventListener;
 import com.tweetmyhome.logger.MyCustomLogger;
+import com.tweetmyhome.util.TwitterUserUtil;
 import com.tweetmyhome.xml.XMLFilesManager;
 import generated.TweetMyHomeDevices;
 import java.util.Map;
+import java.util.logging.Level;
 import twitter4j.DirectMessage;
 import twitter4j.StallWarning;
 import twitter4j.Status;
@@ -42,7 +44,7 @@ import twitter4j.UserStreamListener;
 public final class TweetMyHome implements IODeviceEventListener,UserStreamListener{
 
 
-
+    private final static String TENDENCE = "#TMH";
     private final static boolean INTERNET_REQUIRED_DEV = true;
     
     private TweetMyHomeDatabase db;
@@ -113,6 +115,56 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
         debug("'startApp()' function already executed...");
     }
 
+    private void updateTweetStringToTwitter(Status status, TweetStringAnalizer tsa) {
+        String _user = "@"+status.getUser().getScreenName();
+        TweetFlag.Flag flag = tsa.getFlagTweetFlag().getFlag();
+        TweetFlag.Value value = tsa.getFlagTweetFlag().getValue();
+        String updateTweetString = null;
+        boolean error = false;
+        switch (flag) {
+            case ALARM:
+                if (value.equals(TweetFlag.Value.ON)) {
+                    updateTweetString = _user + " ¡Alarma Activada! " + TENDENCE;
+                } else if (value.equals(TweetFlag.Value.OFF)) {
+                    updateTweetString = _user + " ¡Alarma Desactivada! " + TENDENCE;
+                } else {
+                    error = true;
+                }
+                break;
+            case COMUNITY:
+                if (value.equals(TweetFlag.Value.ON)) {
+                    updateTweetString = _user + " ¡Modo comunitario activado! " + TENDENCE;
+                } else if (value.equals(TweetFlag.Value.OFF)) {
+                    updateTweetString = _user + " ¡Modo comunitario desactivado! " + TENDENCE;
+                } else {
+                    error = true;
+                }
+                break;
+            case USER:
+                if (value.equals(TweetFlag.Value.ADD)) {
+                    updateTweetString = _user + " ¡Usuario Añadido! " + TENDENCE;
+                } else if (value.equals(TweetFlag.Value.DEL)) {
+                    updateTweetString = _user + " ¡Usuario Eliminado! " + TENDENCE;
+                } else if (value.equals(TweetFlag.Value.MOD)) {
+                    updateTweetString = _user + " ¡Usuario Modificado! " + TENDENCE;
+                } else {
+                    error = true;
+                }
+                break;
+            case NULL:
+            default:
+                error = true;
+        }
+        if(!error){
+            try {
+                tw.updateStatus(updateTweetString);
+            } catch (TwitterException ex) {
+                error(ex.toString(),ex);
+            }
+        }
+
+    }
+
     /**
      * IO DEVICE (HARDWARE) MESSAGE
      * @param device
@@ -124,11 +176,16 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
     /**
      * funcion se dispara cuando te mencionana sin ser amigo
      * funcion se dipara cuando alguien que sigues habla cualquier wea
+     * funcion se dispara cuando la propia casa twittea
      * @param status 
      */
     @Override
     public void onStatus(Status status) {
         debug("onStatus @" + status.getUser().getScreenName() + " - " + status.getText());
+        if (TwitterUserUtil.equals(status.getUser().getScreenName(), p.getValueByKey(Key.twitterSuperUser))) {
+            debug("Own tweet detected... EXITING function");
+            return;
+        }
         TweetStringAnalizer tsa;
         try {
             tsa = new TweetStringAnalizer(status.getText());            
@@ -140,83 +197,40 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
         if(mencionedUsers != null){
             boolean isHomeMencioned = false;
             for(Map.Entry<Integer, String> entry : mencionedUsers.entrySet()){
-                if(entry.getValue().equals(p.getValueByKey(Key.twitterSuperUser))){
+                if (TwitterUserUtil.equals(entry.getValue(), p.getValueByKey(Key.twitterSuperUser))) {
                     isHomeMencioned = true;
                     break;
-                }            
+                }
             }
             if(isHomeMencioned){
-                debug("Casa mencionada <3");
                 if(!tsa.isErrorFounded()){
-                    TweetFlag.Flag flag = tsa.getFlagTweetFlag().getFlag();
-                    TweetFlag.Value value = tsa.getFlagTweetFlag().getValue();
-                    try {
-                        switch (flag) {
-                            case ALARM:
-                                if (value.equals(TweetFlag.Value.ON)) {
-                                    if (DEBUG) tw.updateStatus("[dev] alarma on");
-                                    debug("alarma on");
-                                } else if (value.equals(TweetFlag.Value.OFF)) {
-                                    if (DEBUG) tw.updateStatus("[dev] alarma off");
-                                    debug("alarma off");
-                                } else {
-                                    if (DEBUG) tw.updateStatus("[dev] error!!");
-                                    error("This shudn't happen");
-                                }
-                                break;
-                            case COMUNITY:
-                                if (value.equals(TweetFlag.Value.ON)) {
-                                    if (DEBUG) tw.updateStatus("[dev] comunidad on");
-                                    debug("comunidad on");
-                                } else if (value.equals(TweetFlag.Value.OFF)) {
-                                    if (DEBUG) tw.updateStatus("[dev] comunidad off");
-                                    debug("comunidado off");
-                                } else {
-                                    error("This shudn't happen");
-                                }
-                                break;
-                            case USER:
-                                if (value.equals(TweetFlag.Value.ADD)) {
-                                    if (DEBUG) tw.updateStatus("[dev] user add");
-                                    debug("user add");
-                                } else if (value.equals(TweetFlag.Value.DEL)) {
-                                    if (DEBUG) tw.updateStatus("[dev] user del");
-                                    debug("user del");
-                                } else if (value.equals(TweetFlag.Value.MOD)) {
-                                    if (DEBUG) tw.updateStatus("[dev] user mod");
-                                    debug("user mod");
-                                } else {
-                                    error("This shudn't happen");
-                                }
-                                break;
-                            case NULL:
-                            default:
-                                error("This shudn't happen.. default switch case");
-                        }
-                    } catch (TwitterException e) {
-                        
-                    }
+                    updateTweetStringToTwitter(status,tsa);                    
                 } else {
-                    System.out.println(tsa.getErrorString());
+                    StringBuilder comandosString = new StringBuilder();
+                    comandosString.append("Lista de comandos:\n");
+                    TweetStringAnalizer.TWEET_STRING_COMMANDS_DIC.getCommands().forEach((k, v) -> {
+                        comandosString.append(k);
+                        comandosString.append("\n");
+                    });
+                    try {
+                        tw.sendDirectMessage(status.getUser().getId(), comandosString.toString());
+                    } catch (TwitterException ex) {
+                        error(ex.toString(),ex);
+                    }
+                    error(tsa.getErrorString().toString());
                 }
             }else{
-                debug("Casa no mencionada :c");
-            }
-        
+                debug("Users were mencioned, but not this home...");
+            }        
         }else{
-            debug("Casa no mencionada :c obj no construido");
+            debug("None user Mencioned...");
         }
-
     }
 
     @Override
     public void onDirectMessage(DirectMessage directMessage) {
         String text = directMessage.getText();
         debug("onDirectMessage text:" + text);
-        
-
-
-
     }
 
     @Override
