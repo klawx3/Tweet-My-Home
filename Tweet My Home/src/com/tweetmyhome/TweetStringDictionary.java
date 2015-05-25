@@ -37,16 +37,19 @@ public final class TweetStringDictionary {
         TweetFlag userAdd       = new TweetFlag(Flag.USER,      Value.ADD);
         TweetFlag userDel       = new TweetFlag(Flag.USER,      Value.DEL);
         TweetFlag userMod       = new TweetFlag(Flag.USER,      Value.MOD);
-                
+
         //Generar Commandos.. faltaria generar comandos en otros idiomas ¿usar file?
-        commandsMap.put("activar seguridad",           alarmOn);
-        commandsMap.put("desactivar seguridad",        alarmOff);
-        commandsMap.put("estado alarma",               alarmStatus);
-        commandsMap.put("activar modo comunitario",    comunityOn);
+        commandsMap.put("activar seguridad", alarmOn);
+        commandsMap.put("desactivar seguridad", alarmOff);
+        commandsMap.put("activar alarma", alarmOn);
+        commandsMap.put("desactivar alarma", alarmOff);
+        commandsMap.put("estado alarma", alarmStatus);
+        commandsMap.put("estado seguridad", alarmStatus);
+        commandsMap.put("activar modo comunitario", comunityOn);
         commandsMap.put("desactivar modo comunitario", comunityOff);
-        commandsMap.put("alarma $var1",                alarmValue);
-        commandsMap.put("comunitario $var1",           comunityValue);
-        commandsMap.put("listar usuarios",             userList);
+        commandsMap.put("alarma $var1", alarmValue);
+        commandsMap.put("comunitario $var1", comunityValue);
+        commandsMap.put("listar usuarios", userList);
         commandsMap.put("agregar $var1",               userAdd);
         commandsMap.put("eliminar $var1",              userDel);
         commandsMap.put("definir $var1 como $var2",    userMod);
@@ -56,6 +59,7 @@ public final class TweetStringDictionary {
         variableDictionary.put("on", Value.ON);
         variableDictionary.put("off", Value.OFF);
         variableDictionary.put("estado", Value.STATUS);
+        variableDictionary.put("status", Value.STATUS);
     }
     
 

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="tweet_my_home_devices">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="sensor" maxOccurs="unbounded" minOccurs="0">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element type="xs:string" name="name"/>
+                            <xs:element type="xs:string" name="description">
+                                <xs:annotation>
+                                    <xs:documentation>20 lenght20 lenght</xs:documentation>
+                                </xs:annotation>
+                            </xs:element>
+                            <xs:element type="xs:string" name="location">
+                                <xs:annotation>
+                                    <xs:documentation>70 lenght70 lenght</xs:documentation>
+                                </xs:annotation>
+                            </xs:element>
+                            <xs:element type="xs:boolean" name="repetitive">
+                                <xs:annotation>
+                                    <xs:documentation>50 lenght 50 lenght</xs:documentation>
+                                </xs:annotation>
+                            </xs:element>
+                        </xs:sequence>
+                        <xs:attribute type="xs:positiveInteger" name="attached_pin" use="required"/>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

@@ -22,28 +22,60 @@ import java.util.StringTokenizer;
  */
 public class TweetStringAnalizer {
 
+    public static final String TWITTER_USER_STRING = "@";
+    public static final String TWITTER_HASHTAG_STRING = "#";
     public static final String VARIABLE_STRING_IDENTIFIER = "$";
     public static final TweetStringDictionary TWEET_STRING_COMMANDS_DIC = new TweetStringDictionary();
-    private final String rawString;
+    private String formatedRawString; // solo el "comando"
+    private String rawString;
     private boolean errorFounded;
     private Entry<String, TweetFlag> matchedEntry;
     private List<TweetVariable> tweetVariableList;    
     private ErrorString errorString;
+    private Map<Integer,String> mencionedUsers;
+    private Map<Integer, String> mencionedHashTags;
 
 
-    public TweetStringAnalizer(String rawString) throws TweetStringException {        
+
+    public TweetStringAnalizer(String rawString) throws TweetStringException {
         this.rawString = rawString;
-        analizeString();
+        preAnalisis();//analiza las menciones y usuarios existentes
+        analizeString();//analiza solo si existen comandos
     }
+
+    private void preAnalisis() {
+        StringBuilder sb = new StringBuilder();
+        StringTokenizer pre = new StringTokenizer(rawString);
+        for (int line_count = 0; pre.hasMoreTokens(); line_count++) {
+            String token = pre.nextToken();
+            if (token.startsWith(TWITTER_USER_STRING)) {
+                if (mencionedUsers == null) {
+                    mencionedUsers = new HashMap<>();
+                }
+                mencionedUsers.put(line_count, token);
+            } else if (token.startsWith(TWITTER_HASHTAG_STRING)) {
+                if (mencionedHashTags == null) {
+                    mencionedHashTags = new HashMap<>();
+                }
+                mencionedHashTags.put(line_count, token);
+            } else {
+                sb.append(token);
+                sb.append(" ");
+            }
+        }
+        formatedRawString = sb.toString().trim();
+
+    }
+
     /**
-     * Analisis lexico y sintactico de la cadena
+     * Analisis por diccionario de datos de la cadena
      * @throws TweetStringException 
      */
     private void analizeString() throws TweetStringException {
         for (Entry<String, TweetFlag> commandEntry : TWEET_STRING_COMMANDS_DIC.getCommands().entrySet()) {
             int errorPos = 0;
             boolean errorFound = false;
-            StringTokenizer rawStringTokenized = new StringTokenizer(rawString.toLowerCase());
+            StringTokenizer rawStringTokenized = new StringTokenizer(formatedRawString.toLowerCase());
             StringTokenizer keyStringTokenized = new StringTokenizer(commandEntry.getKey());
             while (keyStringTokenized.hasMoreTokens() && rawStringTokenized.hasMoreTokens() && !errorFound) {
                 String keyToken = keyStringTokenized.nextToken();
@@ -104,6 +136,24 @@ public class TweetStringAnalizer {
         }
     }
 
+    /**
+     * Retorna la linea como key en la cual se menciona el usuario y como el valor
+     *
+     * @return
+     */
+    public Map<Integer, String> getMencionedUsers() {
+        return mencionedUsers;
+    }
+
+    /**
+     * Retorna la linea como key en la cual se menciona y el hashtag como el valor
+     *
+     * @return
+     */
+    public Map<Integer, String> getMencionedHashTags() {
+        return mencionedHashTags;
+    }
+
 
     /**
      * Obtienela bandera digitado por el usuario
@@ -161,11 +211,15 @@ public class TweetStringAnalizer {
         return errorString;
     }
 
+
+
     /**
      * Se define el valor de la flag por el valor que tengan las variables
      */
     
     public class ErrorString{
+
+
         private final Integer stringPos;
         private final String commandKey;
         private String stringWithError;
@@ -190,9 +244,12 @@ public class TweetStringAnalizer {
         public void setStringWithError(String stringWithError) {
             this.stringWithError = stringWithError;
         }
-  
-        
-        
+
+        @Override
+        public String toString() {
+            return "ErrorString{" + "stringPos=" + stringPos + ", commandKey=" + commandKey + ", stringWithError=" + stringWithError + '}';
+        }
+
     }
     
     

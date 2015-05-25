@@ -84,10 +84,10 @@ public class GameGUI extends javax.swing.JFrame {
     
     private void showNewProblema(){
         if(problemaIterator.hasNext()){
-            Problema p = problemaIterator.next();
-            jLabel5.setText(Integer.toString(p.getOperando_1()));
-            jLabel4.setText(Integer.toString(p.getOperando_2()));
-            p.startConteoProblema();
+            problemaActual = problemaIterator.next();
+            jLabel5.setText(Integer.toString(problemaActual.getOperando_1()));
+            jLabel4.setText(Integer.toString(problemaActual.getOperando_2()));
+            problemaActual.startConteoProblema();
             ejecutarTimers();
         }
     }
@@ -100,16 +100,22 @@ public class GameGUI extends javax.swing.JFrame {
         jLabelProgresTime.terminar();
         jProgressBarElapsedTime.terminar();
     }
-    private void ingresarSolucionProblema(){
-            try {
-            problemaActual.setPosibleResultado(Integer.parseInt(jFormattedTextField1.getText()));
+
+    private void ingresarSolucionProblema() {
+        try {
+            String texto = jFormattedTextField1.getText().trim();
+            if (!texto.isEmpty()) {
+                problemaActual.setPosibleResultado(Integer.parseInt(jFormattedTextField1.getText()));
+                pararTimers();
+                showNewProblema();
+                jFormattedTextField1.setText(null);
+                jFormattedTextField1.requestFocus();
+            }
+
         } catch (Exception ex) {
             Logger.getLogger(GameGUI.class.getName()).log(Level.SEVERE, null, ex);
         }
-        pararTimers();
-        showNewProblema();
-        jFormattedTextField1.setText(null);
-        jFormattedTextField1.requestFocus();
+
     }
 
     /**

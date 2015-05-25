@@ -5,12 +5,7 @@
  */
 package com.tweetmyhome.db;
 
-import com.tweetmyhome.db.entity.HistorySecurity;
-import com.tweetmyhome.db.entity.TwitterUser;
-import com.tweetmyhome.db.entity.SimpleMention;
-import com.tweetmyhome.db.entity.HistorySensor;
-import com.tweetmyhome.db.entity.SimpleDirectMessage;
-import com.tweetmyhome.TweetMyHome;
+import com.tweetmyhome.db.entity.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -20,10 +15,13 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static com.esotericsoftware.minlog.Log.*;
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import com.tweetmyhome.db.entity.HistoryComunityMode;
 import com.tweetmyhome.db.entity.TwitterUser.UserRol;
 import com.tweetmyhome.util.TweetMyHomeProperties;
 import com.tweetmyhome.util.TweetMyHomeProperties.Key;
+import generated.TweetMyHomeDevices;
+import generated.TweetMyHomeDevices.Sensor;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.Date;
@@ -33,6 +31,7 @@ import java.util.Date;
  * @author Klaw Strife
  */
 public class TweetMyHomeDatabase {
+    private static final int NOT_EXIST = -1;
     private static final String DRIVER = "com.mysql.jdbc.Driver";    
     private Connection con;
     private Statement st;
@@ -44,6 +43,7 @@ public class TweetMyHomeDatabase {
     private final String database;
     private final String port;
     private final TweetMyHomeProperties prop;
+    private MysqlDataSource d;
     
     private boolean conected;    
     public TweetMyHomeDatabase(TweetMyHomeProperties prop){
@@ -56,18 +56,23 @@ public class TweetMyHomeDatabase {
         conected = false;
     }
     public boolean connect() {
-        trace("Trying to connect at DBMS...");
         if (!conected) {
             try {
+//                d = new MysqlDataSource();
+//                d.setUser(user);
+//                d.setPort(Integer.parseInt(port));
+//                d.setDatabaseName(database);
+//                d.setServerName(ip);
+//                d.setPassword(password);
+//                con = d.getConnection();
                 String url = "jdbc:mysql://" + ip + ":" + port + "/" + database;
                 Class.forName(DRIVER);
                 con = DriverManager.getConnection(url, user, password);
-                trace("Connected to DBMS");
                 conected = true;
                 updateSuperUserByFile();
                 setPreparedStatements();
                 return conected;
-            } catch (ClassNotFoundException | SQLException ex) {
+            } catch (SQLException | ClassNotFoundException ex) {
                 error(ex.toString(),ex);
             }
         }else{
@@ -138,7 +143,7 @@ public class TweetMyHomeDatabase {
     public List<SimpleMention> getAllSimpleMentions() {
         try {
             rs = selectAllMenciones.executeQuery();
-            List<SimpleMention> list = new ArrayList();
+            List<SimpleMention> list = new ArrayList<>();
             while(rs.next()){
                 int mencion_id = rs.getInt("men_id");
                 int user_id = rs.getInt("use_id");
@@ -156,7 +161,7 @@ public class TweetMyHomeDatabase {
     public List<SimpleDirectMessage> getAllSimpleDirectMessages() {
         try {
             rs = selectAllMensajeDirecto.executeQuery();
-            List<SimpleDirectMessage> list = new ArrayList();
+            List<SimpleDirectMessage> list = new ArrayList<>();
             while(rs.next()){
                 int mencion_id = rs.getInt("men_id");
                 int user_id = rs.getInt("use_id");
@@ -177,8 +182,8 @@ public class TweetMyHomeDatabase {
             rs = selectAllUsuarios.executeQuery();
             List<TwitterUser> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(new TwitterUser(rs.getInt("id"),rs.getString("usuario"),
-                        UserRol.valueOf(rs.getString("rol"))));
+//                list.add(new TwitterUser(rs.getInt("id"),rs.getString("usuario"),
+//                        UserRol.valueOf(rs.getString("rol"))));
             }
             return list;
         } catch (SQLException ex) {
@@ -186,7 +191,86 @@ public class TweetMyHomeDatabase {
         }
         return null;
     }
+    private boolean existSensorByPin(int pin) throws SQLException {
+        st = con.createStatement();
+        rs = st.executeQuery("SELECT id FROM  sensor WHERE pin_adjunto = " + pin);
+        return rs.next();
+    }
+
+    /**
+     * 
+     * @param location
+     * @return El id de la nueva o antigua ubicacion
+     * @throws java.lang.Exception
+     */
+    public int addLocationIfNotExist(String location) throws Exception {
+        int locationId = getLocationIdByName(location);
+        if (locationId == NOT_EXIST) {//agrego una ubicacion ya que no existe
+            try {
+                st = con.createStatement();
+                st.execute("INSERT INTO ubicacion VALUES(null,'"+location+"')");
+                locationId =  getLocationIdByName(location);
+            } catch (SQLException ex) {
+                Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        if(locationId == NOT_EXIST) throw new Exception("QUE WEA ELMANO");
+        return locationId;
+    }
     
+    private int getLocationIdByName(String location) {
+        try {
+            st =  con.createStatement();
+            rs = st.executeQuery("SELECT id FROM ubicacion WHERE nombre = '" + location + "'");
+            if(rs.next()){
+                return rs.getInt("id");
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return NOT_EXIST;
+    }
+    
+    /**
+     * Solo agrega el sensor si no detecta el PIN 
+     * @param s 
+     */
+    
+    public void addTweetMyHomeDevices(TweetMyHomeDevices tmhd) {
+        tmhd.getSensor().forEach(s -> {
+            addSensorIfNotExist(s);
+        });
+    }
+    /**
+     *     id INT NOT NULL AUTO_INCREMENT,
+            pin_adjunto INT NOT NULL,
+            ubicacion_id INT NOT NULL,
+            nombre VARCHAR(20) NOT NULL,
+            pereodico TINYINT NOT NULL,
+            descripcion VARCHAR(70),
+     * @param s 
+     */
+    public void addSensorIfNotExist(Sensor s){
+        try {
+            if(existSensorByPin(s.getAttachedPin().intValue())){
+                debug("["+s.getAttachedPin()+","+s.getName()+"] Already exist... ");
+            }else{
+                int idLocation = addLocationIfNotExist(s.getLocation());
+                PreparedStatement ps = con.prepareStatement("INSERT INTO sensor VALUES (null,?,?,?,?,?)");
+                ps.setInt(1,s.getAttachedPin().intValue());
+                ps.setInt(2, idLocation);
+                ps.setString(3, s.getName());
+                ps.setInt(4, s.isRepetitive() ? 1 : 0);
+                ps.setString(5, s.getDescription());
+                ps.execute();
+                debug("Added new Sensor ["+s.getAttachedPin()+","+s.getName()+"]");                
+            }
+        } catch (SQLException ex) {
+            error(null,ex);
+        } catch (Exception ex) {
+            error(null,ex);
+        }
+    }
     public void add(TwitterUser u){
         try {
             insertUsuarioTwitter.setInt(1, u.getIdTwitterUser());

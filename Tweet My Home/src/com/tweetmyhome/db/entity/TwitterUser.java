@@ -15,16 +15,18 @@ public class TwitterUser {
 
     private final UserRol rol;
     private final String user;
+    private final boolean activado;
 
     public static enum UserRol {
 
         super_admin, admin, user, none
     }
 
-    public TwitterUser(int idTwitterUser, String user, UserRol rol) {
+    public TwitterUser(int idTwitterUser, String user, UserRol rol,boolean activado) {
         this.idTwitterUser = idTwitterUser;
         this.rol = rol;
         this.user = user;
+        this.activado = activado;
     }
 
     public UserRol getRol() {
@@ -37,6 +39,10 @@ public class TwitterUser {
 
     public int getIdTwitterUser() {
         return idTwitterUser;
+    }
+    
+    public boolean isActivado(){
+        return activado;
     }
 
 }

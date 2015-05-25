@@ -1,5 +1,5 @@
 /*DROPING ALL
-
+SET FOREIGN_KEY_CHECKS=0; 
 DROP TABLE historial_sensor;
 DROP TABLE menciones;
 DROP TABLE mensaje_directo;
@@ -8,12 +8,17 @@ DROP TABLE sensor;
 DROP TABLE usuario_twitter;
 DROP TABLE ubicacion;
 DROP TABLE rol_usuario;
+DROP TABLE historial_comunitario;
+SET FOREIGN_KEY_CHECKS=1; 
 
+SHOW ENGINE INNODB STATUS;
 */
 
 /*TESTING
 SELECT * FROM rol_usuario;
 
+select * from usuario_twitter;
+call setSuperUser('wea');
 */
 CREATE TABLE rol_usuario(
     id INT NOT NULL AUTO_INCREMENT,
@@ -36,21 +41,25 @@ CREATE TABLE ubicacion(
 
 CREATE TABLE usuario_twitter(
     id INT NOT NULL,/*twitter id*/
-    usuario varchar(20) NOT NULL UNIQUE, /*verificar con lo que soporta twitter*/
+    usuario varchar(20) NOT NULL, /*verificar con lo que soporta twitter*/
     rol_id INT NOT NULL,
+    activado TINYINT NOT NULL,
     PRIMARY KEY (id),
-
+    UNIQUE KEY (usuario),
     INDEX (rol_id),
     FOREIGN KEY (rol_id) REFERENCES rol_usuario(id) /*CASCADE WEA ?*/
 );
 
 CREATE TABLE sensor(
     id INT NOT NULL AUTO_INCREMENT,
+    pin_adjunto INT NOT NULL,
     ubicacion_id INT NOT NULL,
-    nombre varchar(20) NOT NULL,
+    nombre VARCHAR(20) NOT NULL,
     pereodico TINYINT NOT NULL,
-    descripcion varchar(70),
+    descripcion VARCHAR(70),
+    
     PRIMARY KEY (id),
+    UNIQUE KEY (pin_adjunto),
 
     INDEX(ubicacion_id),
     FOREIGN KEY (ubicacion_id) REFERENCES ubicacion(id)
@@ -135,7 +144,7 @@ BEGIN
     SET _superuserid := (SELECT rol_usuario.id FROM rol_usuario WHERE rol_usuario.rol = 'super_admin');
     SET _idsuperadmin  := (SELECT usuario_twitter.id FROM usuario_twitter,rol_usuario WHERE usuario_twitter.rol_id = rol_usuario.id AND rol_usuario.rol = 'super_admin');
     IF _idsuperadmin IS NULL THEN
-        INSERT INTO usuario_twitter VALUES(null,__usuario__,_superuserid);
+        INSERT INTO usuario_twitter VALUES(0,__usuario__,_superuserid,1);
     ELSE
         UPDATE usuario_twitter SET usuario_twitter.usuario = __usuario__ WHERE usuario_twitter.id = _idsuperadmin;
     END IF;
