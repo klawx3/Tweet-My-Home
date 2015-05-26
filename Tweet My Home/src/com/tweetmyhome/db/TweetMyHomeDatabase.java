@@ -20,11 +20,17 @@ import com.tweetmyhome.db.entity.HistoryComunityMode;
 import com.tweetmyhome.db.entity.TwitterUser.UserRol;
 import com.tweetmyhome.util.TweetMyHomeProperties;
 import com.tweetmyhome.util.TweetMyHomeProperties.Key;
+import com.tweetmyhome.util.TwitterUserUtil;
 import generated.TweetMyHomeDevices;
 import generated.TweetMyHomeDevices.Sensor;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Iterator;
+import twitter4j.Twitter;
+import twitter4j.TwitterException;
+import twitter4j.User;
 
 /**
  * GENERAR ROW AFFECTED POR INSERTS............
@@ -123,7 +129,7 @@ public class TweetMyHomeDatabase {
         insertHistorialComunitario =
                 con.prepareStatement("INSERT INTO historial_comunitario VALUES(null,?,?,?)");
         insertUsuarioTwitter =
-                con.prepareStatement("INSERT INTO usuario_twitter VALUES(?,?,?)");
+                con.prepareStatement("INSERT INTO usuario_twitter VALUES(?,?,?,?)");
         
         selectAllMensajeDirecto = 
                 con.prepareStatement("SELECT mensaje_directo.id as 'men_id',usuario_twitter.id as 'use_id',usuario_twitter.usuario,mensaje_directo.texto,mensaje_directo.fecha "
@@ -134,9 +140,9 @@ public class TweetMyHomeDatabase {
                 + "FROM menciones,usuario_twitter "
                 + "WHERE menciones.usuario_twitter_id = usuario_twitter.id");
         selectAllUsuarios =
-                con.prepareStatement("SELECT usuario_twitter.id,usuario_twitter.usuario,rol_usuario.rol "
+                con.prepareStatement("SELECT usuario_twitter.id,usuario_twitter.usuario,rol_usuario.rol,usuario_twitter.activado "
                         + "FROM usuario_twitter,rol_usuario "
-                        + "WHERE usuario_twitter.rol_id = rol_usuario.rol");
+                        + "WHERE usuario_twitter.rol_id = rol_usuario.id");
 
     }  
     //SimpleMention(Object obj,long messageId,long userId, String screenName, String text, Date createdAt)
@@ -180,10 +186,10 @@ public class TweetMyHomeDatabase {
     public List<TwitterUser> getAllUsers() {
         try {
             rs = selectAllUsuarios.executeQuery();
-            List<TwitterUser> list = new ArrayList<>();
+            List<TwitterUser> list = Collections.synchronizedList(new ArrayList<>());
             while (rs.next()) {
-//                list.add(new TwitterUser(rs.getInt("id"),rs.getString("usuario"),
-//                        UserRol.valueOf(rs.getString("rol"))));
+                list.add(new TwitterUser(rs.getInt("id"),rs.getString("usuario"),
+                        UserRol.valueOf(rs.getString("rol")),rs.getBoolean("activado")));
             }
             return list;
         } catch (SQLException ex) {
@@ -271,11 +277,58 @@ public class TweetMyHomeDatabase {
             error(null,ex);
         }
     }
+    /**
+     * "Elimina" o Agrega usuarios segun lo que contenga la base de datos
+     * Se utiliza esta funcion para mantener la integridad de los datos respecto a twitter
+     * @param ids 
+     * @param tw 
+     * @throws twitter4j.TwitterException 
+     */
+    public void processTwiterUsersFromTwitterIds(long[] ids,Twitter tw) throws TwitterException{
+        List<TwitterUser> db_users = getAllUsers();
+        for (long id : ids) {
+            long founded_id = NOT_EXIST;
+            Iterator<TwitterUser> iterator_users = db_users.iterator();            
+            while (iterator_users.hasNext()) {
+                TwitterUser tuser = iterator_users.next();
+                if (!tuser.getRol().equals(UserRol.super_admin)) { // si no es super usuario
+                    if (tuser.getIdTwitterUser() == id) { // si coincide la id
+                        founded_id = id;
+                        debug("User founded in DB :" + id);
+                        iterator_users.remove();
+                        break;
+                    }
+                } else { // saco al super usuario de la lista
+                    iterator_users.remove();
+                }
+            }
+            if (founded_id == NOT_EXIST) {// no encontrado
+                add(new TwitterUser(id, TwitterUserUtil.getTwitterUser(tw.showUser(id).getScreenName()), UserRol.user, true));
+                debug("Added new user to DB :" + id);
+            }
+        }
+        db_users.forEach(u -> {
+            desactivateUserById(u.getIdTwitterUser());
+            debug("Desactivated user :" + u.getIdTwitterUser());
+        });
+    }
+    public boolean existTwitterUserById(long id){
+        try {
+            st = con.createStatement();
+            rs = st.executeQuery("SELECT id FROM usuario_twitter WHERE id = "+id);
+            return rs.next();
+        } catch (SQLException ex) {
+            Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return false;
+    }
     public void add(TwitterUser u){
         try {
-            insertUsuarioTwitter.setInt(1, u.getIdTwitterUser());
+            insertUsuarioTwitter.setLong(1, u.getIdTwitterUser());
             insertUsuarioTwitter.setString(2, u.getUser());
             insertUsuarioTwitter.setInt(3, getRolIdByRol(u.getRol()));
+            insertUsuarioTwitter.setBoolean(4, u.isActivado());
+            insertUsuarioTwitter.execute();
         } catch (SQLException ex) {
             Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -370,6 +423,19 @@ public class TweetMyHomeDatabase {
             error(null, ex);
         }
         return -1;
+    }
+
+    public void desactivateUserById(long idTwitterUser) {
+        try {
+            st = con.createStatement();
+            st.execute("UPDATE usuario_twitter SET activado = 0 WHERE id = "+idTwitterUser);
+        } catch (SQLException ex) {
+            Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public void delUserById(long id) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
 }

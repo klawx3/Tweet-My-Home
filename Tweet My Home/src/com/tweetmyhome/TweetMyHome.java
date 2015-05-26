@@ -17,6 +17,8 @@ import com.tweetmyhome.util.TweetMyHomeProperties.Key;
 import java.io.File;
 import java.io.IOException;
 import static com.esotericsoftware.minlog.Log.*;
+import com.tweetmyhome.db.entity.TwitterUser;
+import com.tweetmyhome.db.entity.TwitterUser.UserRol;
 import com.tweetmyhome.exceptions.TweetMyHomeException;
 import com.tweetmyhome.exceptions.TweetStringException;
 import com.tweetmyhome.hardware.DeviceSensor;
@@ -25,6 +27,7 @@ import com.tweetmyhome.logger.MyCustomLogger;
 import com.tweetmyhome.util.TwitterUserUtil;
 import com.tweetmyhome.xml.XMLFilesManager;
 import generated.TweetMyHomeDevices;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import twitter4j.DirectMessage;
@@ -53,6 +56,7 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
     private TweetMyHomeProperties p;
     private IOBridge iob;
     private Security sec;
+    private Comunity com;
     private TweetMyHomeDevices tmhd;
 
     public TweetMyHome() throws TweetMyHomeException, IOException, TweetStringException {
@@ -96,6 +100,7 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
 
     public void start() throws IOException {
         sec = new Security(false);
+        com = new Comunity(false);
         if (p.getValueByKey(Key.arduinoIOBridge).equalsIgnoreCase("true")) {
             iob = new Arduino(new ArduinoConfig(p.getValueByKey(Key.arduinoPort),
                     p.getValueByKey(Key.arduinoEofChar).charAt(0)));
@@ -115,12 +120,13 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
         debug("'startApp()' function already executed...");
     }
 
-    private void updateTweetStringToTwitter(Status status, TweetStringAnalizer tsa) {
-        String _user = "@"+status.getUser().getScreenName();
+    private void analizeAndRespond(User user, TweetStringAnalizer tsa,boolean directMessage) throws TwitterException {
+        String _user = "@"+user.getScreenName();
         TweetFlag.Flag flag = tsa.getFlagTweetFlag().getFlag();
         TweetFlag.Value value = tsa.getFlagTweetFlag().getValue();
         String updateTweetString = null;
         boolean error = false;
+        boolean private_message = false;
         switch (flag) {
             case ALARM:
                 if (value.equals(TweetFlag.Value.ON)) {
@@ -141,11 +147,26 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
                 }
                 break;
             case USER:
+                private_message = true;
                 if (value.equals(TweetFlag.Value.ADD)) {
+                    String newAddUserName  = tsa.getTweetVariableList().get(0).getVariable();
+                    User twitterUser = tw.showUser(newAddUserName);
+                    TwitterUser dbts = new TwitterUser(twitterUser.getId(),
+                                    TwitterUserUtil.getTwitterUser(newAddUserName),
+                                    UserRol.user,
+                                    true);
+                    db.add(dbts);
                     updateTweetString = _user + " ¡Usuario Añadido! " + TENDENCE;
+
                 } else if (value.equals(TweetFlag.Value.DEL)) {
+                    String newDelUser  = tsa.getTweetVariableList().get(0).getVariable();
+                    User twitterUser = tw.showUser(newDelUser);
+                    db.desactivateUserById(twitterUser.getId());
+                    tw.destroyFriendship(twitterUser.getId()); // ver este metodo en accion.. la idea es dejar de seguir--------
                     updateTweetString = _user + " ¡Usuario Eliminado! " + TENDENCE;
                 } else if (value.equals(TweetFlag.Value.MOD)) {
+                    //diferente
+                    
                     updateTweetString = _user + " ¡Usuario Modificado! " + TENDENCE;
                 } else {
                     error = true;
@@ -155,12 +176,18 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
             default:
                 error = true;
         }
-        if(!error){
-            try {
-                tw.updateStatus(updateTweetString);
-            } catch (TwitterException ex) {
-                error(ex.toString(),ex);
+        if (!error) {
+
+            if (directMessage) { // respondo al usuario
+                tw.sendDirectMessage(user.getId(), updateTweetString);
+            } else { // wea
+                if (private_message) {
+                    tw.sendDirectMessage(user.getId(), updateTweetString);
+                } else {
+                    tw.updateStatus(updateTweetString);
+                }
             }
+
         }
 
     }
@@ -181,6 +208,7 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
      */
     @Override
     public void onStatus(Status status) {
+        User user = status.getUser();
         debug("onStatus @" + status.getUser().getScreenName() + " - " + status.getText());
         if (TwitterUserUtil.equals(status.getUser().getScreenName(), p.getValueByKey(Key.twitterSuperUser))) {
             debug("Own tweet detected... EXITING function");
@@ -204,19 +232,12 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
             }
             if(isHomeMencioned){
                 if(!tsa.isErrorFounded()){
-                    updateTweetStringToTwitter(status,tsa);                    
-                } else {
-                    StringBuilder comandosString = new StringBuilder();
-                    comandosString.append("Lista de comandos:\n");
-                    TweetStringAnalizer.TWEET_STRING_COMMANDS_DIC.getCommands().forEach((k, v) -> {
-                        comandosString.append(k);
-                        comandosString.append("\n");
-                    });
-                    try {
-                        tw.sendDirectMessage(status.getUser().getId(), comandosString.toString());
+                    try {                    
+                        analizeAndRespond(user,tsa,false);
                     } catch (TwitterException ex) {
                         error(ex.toString(),ex);
                     }
+                } else {
                     error(tsa.getErrorString().toString());
                 }
             }else{
@@ -226,12 +247,38 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
             debug("None user Mencioned...");
         }
     }
-
+    /**
+     * Si me llegan mensajes significa que lo estoy siguiendo...
+     * @param directMessage 
+     */
     @Override
     public void onDirectMessage(DirectMessage directMessage) {
         String text = directMessage.getText();
+        User user = directMessage.getSender();
         debug("onDirectMessage text:" + text);
+        TweetStringAnalizer tsa;
+        try {
+            tsa = new TweetStringAnalizer(text);
+            analizeAndRespond(user, tsa, true);
+        } catch (TweetStringException | TwitterException ex) {
+            error(ex.toString(), ex);
+        }
     }
+        /**
+     * Se ejecuta al inicio del stream [parece D=]
+     * @param friendIds 
+     */
+    @Override
+    public void onFriendList(long[] friendIds) {
+        debug("onFriendList");
+        try {
+            db.processTwiterUsersFromTwitterIds(friendIds, tw);
+        } catch (TwitterException ex) {
+            error(ex.toString(),ex);
+        }
+    }
+
+
 
     @Override
     public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) {
@@ -258,13 +305,7 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
         debug("Got stall warning:" + warning);
     }
 
-    @Override
-    public void onFriendList(long[] friendIds) {
-        debug("onFriendList");
-        for (long friendId : friendIds) {
-            debug(" " + friendId);
-        }
-    }
+
 
     @Override
     public void onFavorite(User source, User target, Status favoritedStatus) {

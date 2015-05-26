@@ -11,7 +11,7 @@ package com.tweetmyhome.db.entity;
  */
 public class TwitterUser {
 
-    private final int idTwitterUser;
+    private final long idTwitterUser;
 
     private final UserRol rol;
     private final String user;
@@ -22,7 +22,7 @@ public class TwitterUser {
         super_admin, admin, user, none
     }
 
-    public TwitterUser(int idTwitterUser, String user, UserRol rol,boolean activado) {
+    public TwitterUser(long idTwitterUser, String user, UserRol rol,boolean activado) {
         this.idTwitterUser = idTwitterUser;
         this.rol = rol;
         this.user = user;
@@ -37,7 +37,7 @@ public class TwitterUser {
         return user;
     }
 
-    public int getIdTwitterUser() {
+    public long getIdTwitterUser() {
         return idTwitterUser;
     }
     

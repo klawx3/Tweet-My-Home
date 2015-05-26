@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog" prefer="system">
-    <system systemId="file:/C:/Users/Klaw%20Strife/Documents/GitHub/Tweet-My-Home/Tweet%20My%20Home/newXmlSchema.xsd" uri="xml-resources/jaxb/JNXB/newXmlSchema.xsd"/>
-    <system systemId="file:/C:/Users/Klaw%20Strife/Documents/GitHub/Tweet-My-Home/Tweet%20My%20Home/build.xml" uri="xml-resources/jaxb/JNXB/build.xml"/>
-</catalog>
