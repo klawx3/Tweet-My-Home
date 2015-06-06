@@ -12,9 +12,9 @@ import java.util.EventObject;
  *
  * @author Klaw Strife
  */
-
+@FunctionalInterface
 public interface IODeviceEventListener extends EventListener {
     
-    void recivedIOEvent(DeviceSensor device);
+    public void recivedIOEvent(DeviceSensor device);
     
 }

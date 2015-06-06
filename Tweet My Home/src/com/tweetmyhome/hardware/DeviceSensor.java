@@ -13,34 +13,23 @@ import java.util.EventObject;
  */
 public class DeviceSensor extends EventObject {
 
+    private final int pin;
+    private final boolean activated;
 
-
-    private String nombre;
-    private String value;
-
-    public DeviceSensor(Object source, String nombre, String value) {
+    public DeviceSensor(Object source, int pin, boolean activated) {
         super(source);
+        this.pin = pin;
+        this.activated = activated;
     }
 
-    public String getNombre() {
-        return nombre;
+    public int getPin() {
+        return pin;
     }
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
+    public boolean isActivated() {
+        return activated;
     }
 
-    public String getValue() {
-        return value;
-    }
-
-    public void setValue(String value) {
-        this.value = value;
-    }
-
-    @Override
-    public String toString() {
-        return "DeviceSensor{" + "nombre=" + nombre + ", value=" + value + '}';
-    }
+    
 
 }

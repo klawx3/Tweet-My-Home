@@ -5,12 +5,16 @@
  */
 package com.tweetmyhome.test;
 
+import com.tweetmyhome.Security;
+import com.tweetmyhome.SecurityThreshhold;
 import com.tweetmyhome.TweetFlag;
 import com.tweetmyhome.TweetFlag.Flag;
 import com.tweetmyhome.TweetFlag.Value;
 import com.tweetmyhome.TweetStringAnalizer;
 import com.tweetmyhome.TweetVariable;
 import com.tweetmyhome.exceptions.TweetStringException;
+import com.tweetmyhome.xml.XMLFilesManager;
+import generated.TweetMyHomeDevices;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -43,15 +47,31 @@ import twitter4j.UserStreamListener;
 
 public class NewMain{
 
-    /**
-     *
-     * @param args the command line arguments
-     * @throws com.tweetmyhome.exceptions.TweetStringException
-     */
-    public static void main(String[] args) throws TweetStringException {
 
-        
+    public static void main(String[] args) throws InterruptedException {
+        final Scanner l = new Scanner(System.in);
+        Security sec = new Security(true);
+        SecurityThreshhold sec_thr = new SecurityThreshhold(sec);
+        new Thread(() -> {
+            while (true) {
+                switch (l.nextInt()) {
+                    case 0:
+                        System.exit(1);
+                        break;
+                    case 1:
+                        sec_thr.estimulate();
+                        System.out.println("---estimulated---");
+                        break;
+                    default:
+                        System.out.println("0 exit - 1 estimulate");
+                }
+            }
+        }).start();
+
+        while(true){
+            System.out.println(sec_thr.toString());
+            Thread.sleep(125);
+        }
     }
-
 
 }

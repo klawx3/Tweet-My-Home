@@ -12,9 +12,20 @@ Edit this
     </sensor>
     
     <sensor attached_pin="2">
-        <name>Sensor movimiento</name><!--20 lenght-->
-        <description>Detecta los movimientos en un cono del sensor</description><!--70 lenght-->
-        <location>Sala principal</location><!-- 50 lenght-->
-        <repetitive>false</repetitive><!-- Boolean value -->
-    </sensor>    
+        <name>Sensor movimiento</name>
+        <description>Detecta los movimientos en un cono del sensor</description>
+        <location>Sala principal</location>
+        <repetitive>false</repetitive>
+    </sensor>
+    
+    <actuator attached_pin="3">
+        <name>security</name>
+        <description>Led que indica la seguridad en caso de estar activada</description>        
+    </actuator>
+    
+    <actuator attached_pin="5">
+        <name>comunity</name>
+        <description>Led que indica si esta activado el modo comunitario</description>        
+    </actuator>  
+    
 </tweet_my_home_devices>

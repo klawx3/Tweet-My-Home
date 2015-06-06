@@ -28,7 +28,6 @@ public class XMLFilesManager {
             error("Sensor file [" + TWEET_MY_HOME_DEVICES_XML_FILE + "] not founded in this context [" + ex.toString()+ "]");
         }
         return tmh;
-
     }
 
     /**

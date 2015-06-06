@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.tweetmyhome.util;
+package com.tweetmyhome.prop;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -28,11 +28,11 @@ public final class TweetMyHomeProperties {
 
 
     /**
-     * Keys and keys default values
+     * Keys and  default values
      */
     public static enum Key{
         debuggin            ("true"),
-        arduinoIOBridge     ("true"),
+        arduinoIOBridge     ("false"),
         arduinoPort         ("COM3"),
         arduinoBitrate      ("9600"),
         arduinoEofChar      (";"),

@@ -25,7 +25,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ *@deprecated 
  * @author Klaw Strife
  */
 public class Arduino implements IOBridge,SerialPortEventListener {
@@ -53,21 +53,9 @@ public class Arduino implements IOBridge,SerialPortEventListener {
     }
 
 
-    @Override
-    public boolean sendDeviceFlag(DeviceFlag flag) throws IOException {
-        switch(flag.getFlag()){
-            case DeviceFlag.GET_ALL_SENSORS:
-                
-                break;
-            default:
-                return false;
-        }
-        
-        return true;
-    }
 
     @Override
-    public boolean connect() throws IOException {
+    public void connect()  {
         try {
             portEnum = CommPortIdentifier.getPortIdentifiers();
         } catch (Exception e) {
@@ -81,14 +69,26 @@ public class Arduino implements IOBridge,SerialPortEventListener {
             }
         }
         if (portId == null) {
-            throw new IOException(String.format("Arduino Port [%s] not found ", config.getPort()));
+            try {
+                throw new IOException(String.format("Arduino Port [%s] not found ", config.getPort()));
+            } catch (IOException ex) {
+                Logger.getLogger(Arduino.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
 
         try {
             serialPort = (SerialPort) portId.open(getClass().getName(), config.getTime_out());
             serialPort.setSerialPortParams(config.getData_rate(), SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
-            input = serialPort.getInputStream();
-            output = serialPort.getOutputStream();
+            try {
+                input = serialPort.getInputStream();
+            } catch (IOException ex) {
+                Logger.getLogger(Arduino.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            try {
+                output = serialPort.getOutputStream();
+            } catch (IOException ex) {
+                Logger.getLogger(Arduino.class.getName()).log(Level.SEVERE, null, ex);
+            }
             connected = true;
             trace("Arduino [" + config.getPort() + "] Connection open");
 
@@ -104,17 +104,17 @@ public class Arduino implements IOBridge,SerialPortEventListener {
         } catch (TooManyListenersException ex) {
             error(ex.getLocalizedMessage());
         }
-        return connected;
+        connected = true;
     }
 
     @Override
-    public boolean disconnect() throws IOException {
+    public void disconnect() {
         if (serialPort != null) {
             serialPort.removeEventListener();
             serialPort.close();
         }
-        trace("Serial port comunication closed");
-        return true;
+        debug("Serial port comunication closed");
+        connected = false;
     }
 
     @Override
@@ -154,12 +154,32 @@ public class Arduino implements IOBridge,SerialPortEventListener {
                                 + "ExampleString:TEMP%c23%c", arduinoText, ARDUINO_SPLIT_REGEX_CHAR, config.getEOF_CHARACTER()));
                     }
                     debug("ArduinoText:" + arduinoText);
-                    fireEvent(new DeviceSensor(this, split[0], split[1]));
+                    //fireEvent(new DeviceSensor(this, split[0], split[1])); OJO---------------------------
                 }
             } catch (IOException ex) {
                 error(ex.getMessage(), ex);
             }
         }
+    }
+
+    @Override
+    public void activateSecurityLed() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void desactivateSecurityLed() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void activateComunityMode() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void desactivateComunityMode() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
  
     public final class SerialOutputAnalizer {

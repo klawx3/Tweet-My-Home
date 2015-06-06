@@ -5,8 +5,9 @@ generar XML para almacenar METADATOS de los SENSORES                READY VIEJA
 generar nuevo campo en la tabla usuario twitter de activado         READY VIEJA
 generar plataforma servidor de socket...                            ON DUTY...
 cuando tenga net generar un coneccion async y generar listener      READY VIEJA
-generar xml para actuadores (fijos por lo demas y def de pins       ON DUTY...
-
+generar xml para actuadores (fijos por lo demas y def de pins       READY
+get sensor by pin dbms                                              
+rapi gpio
 
 tengo que setear el modo comunitario de la base de datos....
 

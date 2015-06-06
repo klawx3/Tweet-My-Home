@@ -18,8 +18,8 @@ import static com.esotericsoftware.minlog.Log.*;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import com.tweetmyhome.db.entity.HistoryComunityMode;
 import com.tweetmyhome.db.entity.TwitterUser.UserRol;
-import com.tweetmyhome.util.TweetMyHomeProperties;
-import com.tweetmyhome.util.TweetMyHomeProperties.Key;
+import com.tweetmyhome.prop.TweetMyHomeProperties;
+import com.tweetmyhome.prop.TweetMyHomeProperties.Key;
 import com.tweetmyhome.util.TwitterUserUtil;
 import generated.TweetMyHomeDevices;
 import generated.TweetMyHomeDevices.Sensor;
@@ -308,10 +308,13 @@ public class TweetMyHomeDatabase {
             }
         }
         db_users.forEach(u -> {
-            desactivateUserById(u.getIdTwitterUser());
-            debug("Desactivated user :" + u.getIdTwitterUser());
+            if (u.isActivado()) {
+                desactivateUserById(u.getIdTwitterUser());
+                debug("Desactivated user :" + u.getIdTwitterUser());
+            }
         });
     }
+
     public boolean existTwitterUserById(long id){
         try {
             st = con.createStatement();
