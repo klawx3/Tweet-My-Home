@@ -21,9 +21,10 @@ import com.tweetmyhome.db.entity.TwitterUser.UserRol;
 import com.tweetmyhome.prop.TweetMyHomeProperties;
 import com.tweetmyhome.prop.TweetMyHomeProperties.Key;
 import com.tweetmyhome.util.TwitterUserUtil;
-import generated.TweetMyHomeDevices;
-import generated.TweetMyHomeDevices.Sensor;
+import com.tweetmyhome.jaxb.devices.TweetMyHomeDevices;
+import com.tweetmyhome.jaxb.devices.TweetMyHomeDevices.Sensor;
 import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -37,7 +38,7 @@ import twitter4j.User;
  * @author Klaw Strife
  */
 public class TweetMyHomeDatabase {
-    private static final int NOT_EXIST = -1;
+    public static final int NOT_EXIST = -1;
     private static final String DRIVER = "com.mysql.jdbc.Driver";    
     private Connection con;
     private Statement st;
@@ -64,13 +65,6 @@ public class TweetMyHomeDatabase {
     public boolean connect() {
         if (!conected) {
             try {
-//                d = new MysqlDataSource();
-//                d.setUser(user);
-//                d.setPort(Integer.parseInt(port));
-//                d.setDatabaseName(database);
-//                d.setServerName(ip);
-//                d.setPassword(password);
-//                con = d.getConnection();
                 String url = "jdbc:mysql://" + ip + ":" + port + "/" + database;
                 Class.forName(DRIVER);
                 con = DriverManager.getConnection(url, user, password);
@@ -144,7 +138,37 @@ public class TweetMyHomeDatabase {
                         + "FROM usuario_twitter,rol_usuario "
                         + "WHERE usuario_twitter.rol_id = rol_usuario.id");
 
-    }  
+    }
+
+    public long getLastIdSimpleMentions() {
+        try {
+            st = con.createStatement();
+            ResultSet _rs = st.executeQuery("SELECT MAX(id) as id FROM menciones");
+            if (_rs.next()) {
+                long aLong = _rs.getLong("id");
+                return aLong;
+            }
+
+        } catch (SQLException ex) {
+            error(ex.getMessage(), ex);
+        }
+        return -1;
+    }
+
+    public long getLastIdDirectMessages() {
+        try {
+            st = con.createStatement();
+            ResultSet _rs = st.executeQuery("SELECT MAX(id) as id FROM mensaje_directo");
+            if (_rs.next()) {
+                long aLong = _rs.getLong("id");
+                return aLong;
+            }
+
+        } catch (SQLException ex) {
+            error(ex.getMessage(), ex);
+        }
+        return -1;
+    }
     //SimpleMention(Object obj,long messageId,long userId, String screenName, String text, Date createdAt)
     public List<SimpleMention> getAllSimpleMentions() {
         try {
@@ -155,8 +179,8 @@ public class TweetMyHomeDatabase {
                 int user_id = rs.getInt("use_id");
                 String usuario_twitter = rs.getString("usuario");
                 String texto = rs.getString("texto");
-                Date fecha = rs.getDate("fecha");                
-                list.add(new SimpleMention(this,mencion_id,user_id,usuario_twitter,texto,fecha));
+                Timestamp fecha = rs.getTimestamp("fecha");                
+                list.add(new SimpleMention(this,mencion_id,user_id,usuario_twitter,texto,fecha.getTime()));
             }
             return list;           
         } catch (SQLException ex) {
@@ -173,8 +197,8 @@ public class TweetMyHomeDatabase {
                 int user_id = rs.getInt("use_id");
                 String usuario_twitter = rs.getString("usuario");
                 String texto = rs.getString("texto");
-                Date fecha = rs.getDate("fecha");
-                SimpleDirectMessage sm = new SimpleDirectMessage(this,mencion_id,user_id,usuario_twitter,texto,fecha);
+                Timestamp fecha = rs.getTimestamp("fecha");  
+                SimpleDirectMessage sm = new SimpleDirectMessage(this,mencion_id,user_id,usuario_twitter,texto,fecha.getTime());
                 list.add(sm);
             }
             return list;           
@@ -188,7 +212,7 @@ public class TweetMyHomeDatabase {
             rs = selectAllUsuarios.executeQuery();
             List<TwitterUser> list = Collections.synchronizedList(new ArrayList<>());
             while (rs.next()) {
-                list.add(new TwitterUser(rs.getInt("id"),rs.getString("usuario"),
+                list.add(new TwitterUser(rs.getLong("id"),rs.getString("usuario"),
                         UserRol.valueOf(rs.getString("rol")),rs.getBoolean("activado")));
             }
             return list;
@@ -339,9 +363,10 @@ public class TweetMyHomeDatabase {
     }
     public void add(HistoryComunityMode h){
             try {
+                
             insertHistorialComunitario.setInt(1, h.isActive() ? 1 : 0 );
-            insertHistorialComunitario.setDate(2, (java.sql.Date) h.getDate());
-            insertHistorialComunitario.setInt(3, h.getTwitterUserId());
+            insertHistorialComunitario.setTimestamp(2, new Timestamp(h.getDate()));
+            insertHistorialComunitario.setLong(3, h.getTwitterUserId());
             insertHistorialComunitario.execute();
         } catch (SQLException ex) {
             Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
@@ -350,9 +375,10 @@ public class TweetMyHomeDatabase {
     }
     public void add(HistorySecurity hs){
         try {
+            
             insertHistorialSeguridad.setInt(1, hs.isActive() ? 1 : 0 );
-            insertHistorialSeguridad.setDate(2, (java.sql.Date) hs.getDate());
-            insertHistorialSeguridad.setInt(3, hs.getTwitterUserId());
+            insertHistorialSeguridad.setTimestamp(2, new Timestamp(hs.getDate()));
+            insertHistorialSeguridad.setLong(3, hs.getTwitterUserId());
             insertHistorialSeguridad.execute();
         } catch (SQLException ex) {
             Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
@@ -363,7 +389,7 @@ public class TweetMyHomeDatabase {
             insertMenciones.setLong(1, m.getMessageId());
             insertMenciones.setString(2, m.getText());
             insertMenciones.setLong(3, m.getUserId());
-            insertMenciones.setDate(4, (java.sql.Date) m.getCreatedAt());
+            insertMenciones.setTimestamp(4, new Timestamp(m.getCreatedAt()) );
             insertMenciones.execute();
         } catch (SQLException ex) {
             error(null, ex);
@@ -371,10 +397,11 @@ public class TweetMyHomeDatabase {
     }
     public void add(SimpleDirectMessage dm) {
         try {
+            
             insertMensajeDirecto.setLong(1, dm.getMessageId());
             insertMensajeDirecto.setString(2, dm.getText());
             insertMensajeDirecto.setLong(3, dm.getUserId());
-            insertMensajeDirecto.setDate(4, (java.sql.Date) dm.getCreatedAt());
+            insertMensajeDirecto.setTimestamp(4, new Timestamp(dm.getCreatedAt()) );
             insertMensajeDirecto.execute();
         } catch (SQLException ex) {
             error(null, ex);
@@ -383,10 +410,11 @@ public class TweetMyHomeDatabase {
     public void add(HistorySensor hs) {
 
         try {
+            
             insertHistorialSensor.setInt(1, hs.getIdSensor());
-            insertHistorialSensor.setDate(2, (java.sql.Date) hs.getDate());
-            insertHistorialSensor.setInt(3, hs.getIdSensor());
-            insertHistorialSensor.setInt(4, hs.getIdSensor());
+            insertHistorialSensor.setTimestamp(2, new Timestamp(hs.getDate())  );
+            insertHistorialSensor.setInt(3, hs.getValue());
+            insertHistorialSensor.setLong(4, hs.getIdTwitterUser());
             insertHistorialSensor.execute();
         } catch (SQLException ex) {
             error(null, ex);
@@ -439,6 +467,47 @@ public class TweetMyHomeDatabase {
 
     public void delUserById(long id) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    public long getSuperAdminId() {
+        try {
+            st = con.createStatement();
+            ResultSet _rs = st.executeQuery("SELECT usuario_twitter.id  "
+                                            + "FROM rol_usuario,usuario_twitter "
+                                            + "WHERE usuario_twitter.rol_id = rol_usuario.id "
+                                            +       "AND rol_usuario.rol = 'super_admin'");
+            if(_rs.next())
+                return _rs.getLong("id");
+        } catch (SQLException ex) {
+            Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return -1;
+    }
+    
+    public void setSuperUserId(long id){
+        try {
+            st = con.createStatement();
+            st.execute("UPDATE rol_usuario,usuario_twitter "
+                    +   "SET usuario_twitter.id = '"+id+"' "
+                    +   "WHERE usuario_twitter.rol_id = rol_usuario.id "
+                    +       "AND rol_usuario.rol = 'super_admin'");
+        } catch (SQLException ex) {
+            Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public int getSensorIdByPin(long longValue) {
+        try {
+            st = con.createStatement();
+            ResultSet rs = st.executeQuery("SELECT id "
+                                            + "FROM sensor "
+                                            + "WHERE pin_adjunto = " + longValue);
+            if(rs.next())
+                return rs.getInt("id");
+        } catch (SQLException ex) {
+            Logger.getLogger(TweetMyHomeDatabase.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return -1;
     }
 
 }

@@ -1,10 +1,20 @@
 <?xml version='1.0' encoding='UTF-8' ?>
 <schemas xmlns='http://xml.netbeans.org/schema/JAXBWizConfig' destdir='build/generated-sources/jaxb' projectName='Tweet_My_Home' version='1.0'>
-	<schema type='-xmlschema' package='' name='TMH_Devices'>
+	<schema type='-xmlschema' package='com.tweetmyhome.jaxb.dict' name='Commands'>
 		<xjc-options>
 		</xjc-options>
 		<schema-sources>
-			<schema-source location='xml-resources/jaxb/TMH_Devices/tweetmyhome_devices_schema.xsd' origLocation='tweetmyhome_devices_schema.xsd'/>
+			<schema-source location='xml-resources/jaxb/Commands/newXmlSchema.xsd' origLocation='newXmlSchema.xsd'/>
+		</schema-sources>
+		<bindings>
+		</bindings>
+		<catalog/>
+	</schema>
+	<schema type='-xmlschema' package='com.tweetmyhome.jaxb.devices' name='TMH_Devices'>
+		<xjc-options>
+		</xjc-options>
+		<schema-sources>
+			<schema-source location='xml-resources/jaxb/TMH_Devices/newXmlSchema1.xsd' origLocation='newXmlSchema1.xsd'/>
 		</schema-sources>
 		<bindings>
 		</bindings>

@@ -11,15 +11,29 @@
     <target name="jaxb-code-generation" depends="xjc-typedef-target,-do-init,-init-macrodef-javac">
         <mkdir dir="${build.generated.sources.dir}/jaxb" xmlns:s="http://xml.netbeans.org/schema/JAXBWizConfig"/>
         <mkdir dir="build/generated/jaxbCache" xmlns:s="http://xml.netbeans.org/schema/JAXBWizConfig"/>
-        <mkdir dir="build/generated/jaxbCache/TMH_Devices"/>
-        <xjc destdir="build/generated/jaxbCache/TMH_Devices" catalog="catalog.xml">
+        <mkdir dir="build/generated/jaxbCache/Commands"/>
+        <xjc package="com.tweetmyhome.jaxb.dict" destdir="build/generated/jaxbCache/Commands" catalog="catalog.xml">
             <classpath>
                 <pathelement location="${src.dir}"/>
                 <pathelement path="${jaxbwiz.xjcrun.classpath}"/>
             </classpath>
             <arg value="-xmlschema"/>
-            <schema file="xml-resources/jaxb/TMH_Devices/tweetmyhome_devices_schema.xsd"/>
-            <depends file="xml-resources/jaxb/TMH_Devices/tweetmyhome_devices_schema.xsd"/>
+            <schema file="xml-resources/jaxb/Commands/newXmlSchema.xsd"/>
+            <depends file="xml-resources/jaxb/Commands/newXmlSchema.xsd"/>
+            <produces dir="build/generated/jaxbCache/Commands"/>
+        </xjc>
+        <copy todir="${build.generated.sources.dir}/jaxb">
+            <fileset dir="build/generated/jaxbCache/Commands"/>
+        </copy>
+        <mkdir dir="build/generated/jaxbCache/TMH_Devices"/>
+        <xjc package="com.tweetmyhome.jaxb.devices" destdir="build/generated/jaxbCache/TMH_Devices" catalog="catalog.xml">
+            <classpath>
+                <pathelement location="${src.dir}"/>
+                <pathelement path="${jaxbwiz.xjcrun.classpath}"/>
+            </classpath>
+            <arg value="-xmlschema"/>
+            <schema file="xml-resources/jaxb/TMH_Devices/newXmlSchema1.xsd"/>
+            <depends file="xml-resources/jaxb/TMH_Devices/newXmlSchema1.xsd"/>
             <produces dir="build/generated/jaxbCache/TMH_Devices"/>
         </xjc>
         <copy todir="${build.generated.sources.dir}/jaxb">

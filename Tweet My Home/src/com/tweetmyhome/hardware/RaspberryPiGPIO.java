@@ -14,11 +14,12 @@ import com.pi4j.io.gpio.GpioPinDigitalOutput;
 import com.pi4j.io.gpio.Pin;
 import com.pi4j.io.gpio.RaspiPin;
 import com.tweetmyhome.exceptions.TweetMyHomeException;
-import generated.TweetMyHomeDevices;
+
 import java.util.List;
 import static com.esotericsoftware.minlog.Log.*;
 import com.pi4j.io.gpio.GpioPinDigitalInput;
 import com.pi4j.io.gpio.PinPullResistance;
+import com.tweetmyhome.jaxb.devices.TweetMyHomeDevices;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,12 +59,11 @@ public class RaspberryPiGPIO implements IOBridge, GpioPinListenerDigital {
     @Override
     public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
         PinState state = event.getState();
-        Pin pin = event.getPin().getPin();        
-        fireEvent(new DeviceSensor(this, pinNameToInteger(pin.getName()), state.isHigh()));
-    }
+        Pin pin = event.getPin().getPin();     
+                     
+        DeviceSensor deviceSensor = new DeviceSensor(this, pin.getAddress(), state.isHigh());
+        fireEvent(deviceSensor);
 
-    private int pinNameToInteger(String name) { // FALTA !!!! PLIX
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -111,7 +111,7 @@ public class RaspberryPiGPIO implements IOBridge, GpioPinListenerDigital {
                 if (!k.isHigh()) {
                     k.high();
                 } else {
-                    debug("Security led already HIGH... ");
+                    warn("Security led already HIGH... ");
                 }
             }
         });
@@ -128,7 +128,7 @@ public class RaspberryPiGPIO implements IOBridge, GpioPinListenerDigital {
                 if (!k.isLow()) {
                     k.low();
                 } else {
-                    debug("Security led already Low... ");
+                    warn("Security led already Low... ");
                 }
             }
         });
@@ -143,7 +143,7 @@ public class RaspberryPiGPIO implements IOBridge, GpioPinListenerDigital {
                 if (!k.isHigh()) {
                     k.high();
                 } else {
-                    debug("Comunity led already high... ");
+                    warn("Comunity led already high... ");
                 }
             }
         });
@@ -159,7 +159,7 @@ public class RaspberryPiGPIO implements IOBridge, GpioPinListenerDigital {
                 if (!k.isLow()) {
                     k.low();
                 } else {
-                    debug("Comunity led already Low... ");
+                    warn("Comunity led already Low... ");
                 }
             }
         });
@@ -198,11 +198,12 @@ public class RaspberryPiGPIO implements IOBridge, GpioPinListenerDigital {
         listGpioDigitalInput = new ArrayList<>();
         devicesInfo.getSensor().forEach(s -> {
             Pin pinByName = RaspiPin.getPinByName(getGpioPinName(s));
-            GpioPinDigitalInput booleanSensor = gpio.provisionDigitalInputPin(pinByName, PinPullResistance.PULL_DOWN);
+            GpioPinDigitalInput booleanSensor = gpio.provisionDigitalInputPin(pinByName,PinPullResistance.PULL_UP);
             booleanSensor.addListener(this);
             listGpioDigitalInput.add(booleanSensor);
             debug(s.getName() 
-                    + " Defined as Boolean Sensor [resistor=PinPullResistance.PULL_DOWN] in pin " + getGpioPinName(s));
+                    + " Defined as Boolean Sensor [PinPullResistance.PULL_UP] in pin " 
+                    + getGpioPinName(s));
         });
 
     }    

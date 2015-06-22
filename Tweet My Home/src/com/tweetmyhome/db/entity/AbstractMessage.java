@@ -19,9 +19,9 @@ public class AbstractMessage extends EventObject {
     private final long userId;
     private final String screenName;
     private final String text;
-    private final Date createdAt;
+    private final long createdAt;
 
-    public AbstractMessage(Object source,long messageId,long userId, String screenName, String text, Date createdAt) {
+    public AbstractMessage(Object source,long messageId,long userId, String screenName, String text, long createdAt) {
         super(source);
         this.messageId = messageId;
         this.userId = userId;
@@ -46,7 +46,7 @@ public class AbstractMessage extends EventObject {
         return text;
     }
 
-    public Date getCreatedAt() {
+    public long getCreatedAt() {
         return createdAt;
     }
 

@@ -14,10 +14,10 @@ import java.util.Date;
 public class AbstractHistory {
     
     private Integer idHistory;
-    private Date date;
-    private int twitterUserId;
+    private long date;
+    private long twitterUserId;
 
-    public AbstractHistory(Integer idHistory, Date date, int twitterUserId) {
+    public AbstractHistory(Integer idHistory, long date, long twitterUserId) {
         this.idHistory = idHistory;
         this.date = date;
         this.twitterUserId = twitterUserId;
@@ -28,11 +28,11 @@ public class AbstractHistory {
         return idHistory;
     }
 
-    public Date getDate() {
+    public long getDate() {
         return date;
     }
 
-    public int getTwitterUserId() {
+    public long getTwitterUserId() {
         return twitterUserId;
     }
     

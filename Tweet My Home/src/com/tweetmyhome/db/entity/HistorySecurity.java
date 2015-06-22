@@ -13,10 +13,14 @@ import java.util.Date;
  */
 public class HistorySecurity extends AbstractHistory{
 
-    private boolean active;
+    private final boolean active;
     
-    public HistorySecurity(Integer idHistory,boolean active, Date date, int twitterUserId) {
+    public HistorySecurity(Integer idHistory,boolean active, long date, long twitterUserId) {
         super(idHistory, date, twitterUserId);
+        this.active = active;
+    }
+    public HistorySecurity(boolean active, long date, long twitterUserId) {
+        super(null, date, twitterUserId);
         this.active = active;
     }
 

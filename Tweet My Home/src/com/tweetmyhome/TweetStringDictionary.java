@@ -6,9 +6,13 @@
 package com.tweetmyhome;
 
 import com.tweetmyhome.TweetFlag.*;
+import com.tweetmyhome.jaxb.dict.TweetMyHomeDictionary;
+import com.tweetmyhome.jaxb.dict.TweetMyHomeDictionary.Command;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import static com.esotericsoftware.minlog.Log.*;
+import com.tweetmyhome.jaxb.dict.TweetMyHomeDictionary.Variable;
 import java.util.Map;
 
 /**
@@ -21,48 +25,82 @@ public final class TweetStringDictionary {
 
     private final Map<String, TweetFlag> commandsMap;
     private final Map<String, TweetFlag.Value> variableDictionary;
-  
-    public TweetStringDictionary() {
+    private final TweetMyHomeDictionary dic;
+    
+    public TweetStringDictionary(TweetMyHomeDictionary dic) {
+        this.dic = dic;
         commandsMap = new HashMap<>();
         variableDictionary = new HashMap<>();
-        //Generar flags
-        TweetFlag alarmOn       = new TweetFlag(Flag.ALARM,     Value.ON);
-        TweetFlag alarmOff      = new TweetFlag(Flag.ALARM,     Value.OFF);
-        TweetFlag alarmStatus   = new TweetFlag(Flag.ALARM,     Value.STATUS);
-        TweetFlag comunityOn    = new TweetFlag(Flag.COMUNITY,  Value.ON);
-        TweetFlag comunityOff   = new TweetFlag(Flag.COMUNITY,  Value.OFF);
-        TweetFlag alarmValue    = new TweetFlag(Flag.ALARM,     Value.BY_VARIABLE);
-        TweetFlag comunityValue = new TweetFlag(Flag.COMUNITY,  Value.BY_VARIABLE);
-        TweetFlag userList      = new TweetFlag(Flag.USER,      Value.LIST);
-        TweetFlag userAdd       = new TweetFlag(Flag.USER,      Value.ADD);
-        TweetFlag userDel       = new TweetFlag(Flag.USER,      Value.DEL);
-        TweetFlag userMod       = new TweetFlag(Flag.USER,      Value.MOD);
+        List<TweetMyHomeDictionary.Command> commands = dic.getCommand();
+        for (Command c : commands) {
+            boolean error = false;
+            String flagString = c.getFlag();
+            String valueString = c.getValue();
 
-        //Generar Commandos.. faltaria generar comandos en otros idiomas ¿usar file?
-        commandsMap.put("activar seguridad", alarmOn);
-        commandsMap.put("desactivar seguridad", alarmOff);
-        commandsMap.put("activar alarma", alarmOn);
-        commandsMap.put("desactivar alarma", alarmOff);
-        commandsMap.put("estado alarma", alarmStatus);
-        commandsMap.put("estado seguridad", alarmStatus);
-        commandsMap.put("activar modo comunitario", comunityOn);
-        commandsMap.put("desactivar modo comunitario", comunityOff);
-        commandsMap.put("alarma $var1", alarmValue);
-        commandsMap.put("comunitario $var1", comunityValue);
-        commandsMap.put("listar usuarios", userList);
-        commandsMap.put("agregar $var1",               userAdd);
-        commandsMap.put("eliminar $var1",              userDel);
-        commandsMap.put("definir $var1 como $var2",    userMod);
-        commandsMap.put("dejar $var1 como $var2",    userMod);
-        
-        
-        variableDictionary.put("on", Value.ON);
-        variableDictionary.put("off", Value.OFF);
-        variableDictionary.put("estado", Value.STATUS);
-        variableDictionary.put("status", Value.STATUS);
+            Flag posibleFlag = parseFlag(flagString);
+            Value posibleValue = parseValue(valueString);
+            if (posibleFlag == null) {
+                warn("Flag [" + flagString + "] not recognized in " + c.getString());
+                error = true;
+            }
+            if (posibleValue == null) {
+                warn("Value [" + posibleValue + "] not recognized in " + c.getString());
+                error = true;
+            }
+            if (!error) {
+                TweetFlag tf = new TweetFlag(posibleFlag, posibleValue);
+                commandsMap.put(c.getString(), tf);
+                debug(String.format("Dictionary word updated [%s,%s,%s]", c.getString(), valueString, flagString));
+            }
+
+        }
+        List<TweetMyHomeDictionary.Variable> variables = dic.getVariable();
+        for (Variable v : variables) {
+            boolean error = false;
+            Value posibleValue = parseValue(v.getValue());
+            if (posibleValue == null) {
+                warn("Value [" + v.getValue() + "] not recognized in " + v.getString());
+                error = true;
+            }
+            if (!error) {
+                variableDictionary.put(v.getValue(), posibleValue);
+                debug(String.format("Variable word updated [%s,%s]", v.getString(), v.getValue()));
+            }
+        }
     }
     
 
+    /**
+     * Return null if is do not founded
+     * @param flagString
+     * @return 
+     */
+    private Flag parseFlag(String flagString){
+        Flag flag = null;
+        for(Flag f : Flag.values()){
+            if(f.name().equalsIgnoreCase(flagString)){
+                flag = f;
+                break;
+            }
+        }
+        return flag;
+    }
+    /**
+     * return null if is do not founded
+     * @param valueString
+     * @return 
+     */
+    private Value parseValue(String valueString){
+        Value value = null;
+        for(Value v : Value.values()){
+            if(v.name().equalsIgnoreCase(valueString)){
+                value = v;
+                break;
+            }
+        }
+        return value;
+    }
+    
     public Map<String, TweetFlag> getCommands() {
         return commandsMap;
     }

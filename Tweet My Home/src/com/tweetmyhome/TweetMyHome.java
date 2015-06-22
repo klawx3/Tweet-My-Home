@@ -14,6 +14,11 @@ import com.tweetmyhome.prop.TweetMyHomeProperties.Key;
 import java.io.File;
 import java.io.IOException;
 import static com.esotericsoftware.minlog.Log.*;
+import com.tweetmyhome.db.entity.HistoryComunityMode;
+import com.tweetmyhome.db.entity.HistorySecurity;
+import com.tweetmyhome.db.entity.HistorySensor;
+import com.tweetmyhome.db.entity.SimpleDirectMessage;
+import com.tweetmyhome.db.entity.SimpleMention;
 import com.tweetmyhome.db.entity.TwitterUser;
 import com.tweetmyhome.db.entity.TwitterUser.UserRol;
 import com.tweetmyhome.exceptions.TweetMyHomeException;
@@ -24,8 +29,12 @@ import com.tweetmyhome.hardware.RaspberryPiGPIO;
 import com.tweetmyhome.logger.MyCustomLogger;
 import com.tweetmyhome.util.TwitterUserUtil;
 import com.tweetmyhome.xml.XMLFilesManager;
-import generated.TweetMyHomeDevices;
+import com.tweetmyhome.jaxb.devices.TweetMyHomeDevices;
+import com.tweetmyhome.jaxb.dict.TweetMyHomeDictionary;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Map;
+import java.util.logging.Level;
 import twitter4j.DirectMessage;
 import twitter4j.StallWarning;
 import twitter4j.Status;
@@ -38,24 +47,30 @@ import twitter4j.TwitterStreamFactory;
 import twitter4j.User;
 import twitter4j.UserList;
 import twitter4j.UserStreamListener;
+import twitter4j.api.DirectMessagesResourcesAsync;
+import twitter4j.conf.ConfigurationBuilder;
 
+public final class TweetMyHome implements IODeviceEventListener, UserStreamListener {
 
-public final class TweetMyHome implements IODeviceEventListener,UserStreamListener{
-
-
-    private final static String TENDENCE = "#TMH";
     private final static boolean INTERNET_REQUIRED_DEV = true;
+    private final static boolean RASPBERRY_ON_BOARD = true;
+    private final static String TENDENCE = "#TMH";
+    private final static File COUNT_FILE = new File("messajes.count");
     private final TweetMyHomeProperties p;
+    private final TweetMyHomeDevices tmh_device_xml;
+    private final TweetMyHomeDictionary tmh_dic_xml;
+    private final TweetStringDictionary tweetDictionary;
+    private final TweetMensajeCount tweetCount;
+    private final SecurityThreshhold sect ;
     private TweetMyHomeDatabase db;
-    private final TweetMyHomeDevices tmhd;    
-    private TwitterStream tws;
-    private Twitter tw ;    
-    private IOBridge iob;
     private Security sec;
     private Comunity com;
-    
+    private TwitterStream tws;
+    private Twitter tw;
+    private IOBridge iob;
 
     public TweetMyHome() throws TweetMyHomeException, IOException, TweetStringException {
+        
         Log.setLogger(new MyCustomLogger());
         p = new TweetMyHomeProperties();
         if (!p.isFirstTimeCreated()) {            
@@ -74,52 +89,111 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
             info("Exiting aplication...");
             System.exit(0);
         }
-        tmhd = XMLFilesManager.getTweetMyHomeDevices();
-        if (tmhd == null) {
-            throw new TweetMyHomeException("Fail to read [" + XMLFilesManager.TWEET_MY_HOME_DEVICES_XML_FILE + "] file");
+        tweetCount = new TweetMensajeCount(COUNT_FILE);
+        tmh_device_xml = XMLFilesManager.getTweetMyHomeDevices();
+        if (tmh_device_xml == null) {
+            throw new TweetMyHomeException("Fail to read [" 
+                    + XMLFilesManager.TWEET_MY_HOME_DEVICES_XML_FILE + "] file");
         }
-        trace("XML File Readed...");
+        tmh_dic_xml = XMLFilesManager.getTweetMyHomeDictionaryCommand();
+        if (tmh_dic_xml == null) {
+            throw new TweetMyHomeException("Fail to read [" 
+                    + XMLFilesManager.TWEET_MY_HOME_DICTIONARY_XML_FILE + "] file");
+        }
+        tweetDictionary = new TweetStringDictionary(tmh_dic_xml);
+        trace("XML Files already Readed [" + XMLFilesManager.TWEET_MY_HOME_DEVICES_XML_FILE 
+                + "," + XMLFilesManager.TWEET_MY_HOME_DICTIONARY_XML_FILE + "]");
+        
         if (!NetUtil.isConnectedToInternet() && INTERNET_REQUIRED_DEV) {
             throw new TweetMyHomeException("Not Connected to Internet");
         }
-        trace("Internet conecction detected...");
+        trace("Internet conecction detected");
+        trace("Trying to connect to DBMS...");
         db = new TweetMyHomeDatabase(p);
         if (!db.connect()) {
             throw new TweetMyHomeException("Not Connected to DBMS");
         }
         trace("Connected to DBMS");
-        db.addTweetMyHomeDevices(tmhd);
+        db.addTweetMyHomeDevices(tmh_device_xml);
 
-        sec = new Security(false);//**************************************************** establecer esto por base de datos
-        com = new Comunity(false);
-        if (p.getValueByKey(Key.arduinoIOBridge).equalsIgnoreCase("true")) {
-//            iob = new Arduino(new ArduinoConfig(p.getValueByKey(Key.arduinoPort),
-//                    p.getValueByKey(Key.arduinoEofChar).charAt(0)));
-            throw new TweetMyHomeException("Arduino not supported...");
+        
+        if (RASPBERRY_ON_BOARD) {
+            if (p.getValueByKey(Key.arduinoIOBridge).equalsIgnoreCase("true")) {
+                throw new TweetMyHomeException("Arduino not supported...");
+            } else {
+                iob = new RaspberryPiGPIO(tmh_device_xml);
+            }
+            if (iob != null) {
+                iob.addIODeviceListener(this);
+                iob.connect();
+                trace("GPIO Link established");
+                com = new Comunity(false, iob);
+                sec = new Security(false, iob);
+                //sect = new SecurityThreshhold(sec);
+                trace("Security , Security threshold & Comunity initiated");
+            }
         } else {
-            iob = new RaspberryPiGPIO(tmhd);
+            warn("Raspberry PI GPIO omited. APP prob. won't work well");
         }
-        if (iob != null) {
-            iob.addIODeviceListener(this);
-            iob.connect();
-        }
+        sect = new SecurityThreshhold(sec);
+        trace("Setting Twitter OAuth parameters...");
+        ConfigurationBuilder cb1 = new ConfigurationBuilder();
+        cb1.setDebugEnabled(false)
+                .setOAuthConsumerKey("RaTG5hw5OwhQQugghtLthG0ug")
+                .setOAuthConsumerSecret("brJ0vcrdGnCHMTxDCmKoThPpJubD6e2xol5WjdO9bBa19nzkXp")
+                .setOAuthAccessToken("3236804811-V6MOxfbox4jVylx6pDjkR9UrEpuPzZyOwkaVIWp")
+                .setOAuthAccessTokenSecret("33HvizelxmGN700a7pLa6YBKv0l2uTMLoJK593MlXellg");
+        ConfigurationBuilder cb2 = new ConfigurationBuilder();
+        cb2.setDebugEnabled(false)
+                .setOAuthConsumerKey("RaTG5hw5OwhQQugghtLthG0ug")
+                .setOAuthConsumerSecret("brJ0vcrdGnCHMTxDCmKoThPpJubD6e2xol5WjdO9bBa19nzkXp")
+                .setOAuthAccessToken("3236804811-V6MOxfbox4jVylx6pDjkR9UrEpuPzZyOwkaVIWp")
+                .setOAuthAccessTokenSecret("33HvizelxmGN700a7pLa6YBKv0l2uTMLoJK593MlXellg");
+        TwitterFactory tf = new TwitterFactory(cb1.build());
+        TwitterStreamFactory sf = new TwitterStreamFactory(cb2.build());
+
         trace("Connecting to Twitter STREAM API...");
-        tws = new TwitterStreamFactory().getInstance();
+        tws = sf.getInstance();
         tws.addListener(this);
         tws.user();
         trace("Connecting to Twitter REST API...");
-        tw = new TwitterFactory().getInstance();
-        debug("All working !!.. i guess");
+        tw = tf.getInstance();
+        debug("Contructor fi");
+        /*----------------NEEDED WORK TO DO-------------------*/
 
+           // integrityCheckSuperAdmin();
+
+        
+    }
+
+    private void integrityCheckSuperAdmin() {
+        try {
+            User superAdmin = tw.showUser(p.getValueByKey(TweetMyHomeProperties.Key.twitterSuperUser));
+            long dbSuperAdminId = db.getSuperAdminId();
+            if (dbSuperAdminId != TweetMyHomeDatabase.NOT_EXIST) {
+                long twitterIdSuperAdmin = superAdmin.getId();
+                if (twitterIdSuperAdmin != dbSuperAdminId) {
+                    db.setSuperUserId(dbSuperAdminId);
+                    debug("Updated Super Admin id from twitter....");
+                } else {
+                    debug("Super Admin integrity is correct...");
+                }
+                db.setSuperUserId(LEVEL_NONE);
+            } else {
+                warn("Super User id in twitter does't found...");
+            }
+        } catch (TwitterException ex) {
+            warn("Super user acount does't exist. verify your config file or check twitter conection", ex);
+        }
     }
 
 
-    private void analizeAndRespond(User user, TweetStringAnalizer tsa,boolean directMessage) 
+    private void analyzeAndRespond(User user, TweetStringAnalizer tsa,boolean directMessage) 
             throws TwitterException, TweetMyHomeException {
         String _user = "@"+user.getScreenName();
         TweetFlag.Flag flag = tsa.getFlagTweetFlag().getFlag();
         TweetFlag.Value value = tsa.getFlagTweetFlag().getValue();
-        String updateTweetString = null;
+        StringBuilder finalTweetStringResponse = new StringBuilder();
         boolean error = false;
         boolean private_message = false;
         boolean informar_admins = false;//************************************************
@@ -127,82 +201,108 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
             case ALARM:
                 if (value.equals(TweetFlag.Value.ON)) {
                     if(!sec.isEnabled()){ // activo la alarma
-                        updateTweetString = _user + " ¡Alarma Activada! " + TENDENCE;
+                        finalTweetStringResponse.append(_user).append(" ¡Alarma Activada! ").append(TENDENCE);
+                        sec.enable();
+                        db.add(new HistorySecurity(sec.isEnabled(), Calendar.getInstance().getTimeInMillis(), user.getId()));
                     }else{ // la alarma ya esta activada. envio mensaje de error privado al usuario
                         private_message = true;
-                        updateTweetString = "Error,la alarma ya esta activa";
-                    }                    
-                } else if (value.equals(TweetFlag.Value.OFF)) { 
-                    if(sec.isEnabled()){ // desactivo la alarma
-                        updateTweetString = _user + " ¡Alarma Desactivada! " + TENDENCE;
+                        finalTweetStringResponse.append("Error,la alarma ya esta activa");
+                    }
+                } else if (value.equals(TweetFlag.Value.OFF)) {
+                    if (sec.isEnabled()) { // desactivo la alarma
+                        finalTweetStringResponse.append(_user).append(" ¡Alarma Desactivada! ").append(TENDENCE);
+                        sec.disable();
+                        db.add(new HistorySecurity(sec.isEnabled(), Calendar.getInstance().getTimeInMillis(), user.getId()));
                     } else { // alarma ya desactivada. envio mensaje de error privado al usuario
                         private_message = true;
-                        updateTweetString = "Error,la alarma ya esta desactivada";
+                        finalTweetStringResponse.append("Error,la alarma ya esta desactivada");
                     }
+                } else if (value.equals(TweetFlag.Value.STATUS)) {
+                    private_message =true;
+                    if(sec.isEnabled()){
+                        finalTweetStringResponse.append("Alarma activa ");
+                    }else{
+                        finalTweetStringResponse.append("Alarma desactivada ");
+                    }
+                    finalTweetStringResponse.append(TENDENCE);
+
                 } else {
                     error = true;
+                    warn("Alarm value does't founded");
                 }
                 break;
             case COMUNITY:
                 if (value.equals(TweetFlag.Value.ON)) {
                     if(!com.isActivated()){ //activo modo comunitario
-                        updateTweetString = _user + " ¡Modo comunitario activado! " + TENDENCE;
+                        finalTweetStringResponse.append(_user).append(" ¡Modo comunitario activado! " ).append(TENDENCE);
+                        com.activateComunityMode();
+                        db.add(new HistoryComunityMode(com.isActivated(), Calendar.getInstance().getTimeInMillis(), user.getId()));
                     }else{
                         private_message = true;
-                        updateTweetString = "Error, el modo comunitario ya esta activado";
+                        finalTweetStringResponse.append("Error, el modo comunitario ya esta activado");
                     }                    
                 } else if (value.equals(TweetFlag.Value.OFF)) {
                     if (com.isActivated()) {
-                        updateTweetString = _user + " ¡Modo comunitario desactivado! " + TENDENCE;
+                        finalTweetStringResponse.append(_user).append(" ¡Modo comunitario desactivado! ").append(TENDENCE);
+                        com.desactivateComunityMode();
+                        db.add(new HistoryComunityMode(com.isActivated(), Calendar.getInstance().getTimeInMillis(), user.getId()));
                     } else {
                         private_message = true;
-                        updateTweetString = "Error, el modo comunitario ya esta desactivado";
+                        finalTweetStringResponse.append( "Error, el modo comunitario ya esta desactivado");
                     }
                 } else {
                     error = true;
+                    warn("Comunity value does't founded");
                 }
                 break;
             case USER:
                 private_message = true;
                 if (value.equals(TweetFlag.Value.ADD)) { // verificar si usuario existe*****************************
-                    String newAddUserName  = tsa.getTweetVariableList().get(0).getVariable();
+                    tsa.getTweetVariableList().forEach(v -> {
+                        debug("  Tweet Variables founded");
+                        debug("\t" + "[" + v.getVaribleIdentifier() + "]" + v.getVariable());
+                    });
+                    String newAddUserName = tsa.getTweetVariableList().get(0).getVariable();
                     User twitterUser = tw.showUser(newAddUserName);
-                    TwitterUser dbts = new TwitterUser(twitterUser.getId(),
+                    db.add(new TwitterUser(twitterUser.getId(),
                                     TwitterUserUtil.getTwitterUser(newAddUserName),
                                     UserRol.user,
-                                    true);
-                    db.add(dbts);
-                    updateTweetString = _user + " ¡Usuario Añadido! " + TENDENCE;
-
+                                    true));
+                    finalTweetStringResponse.append(_user).append(" ¡Usuario Añadido! ").append(TENDENCE);
                 } else if (value.equals(TweetFlag.Value.DEL)) {
                     String newDelUser  = tsa.getTweetVariableList().get(0).getVariable(); // solo deberia existir 1 elemento
                     User twitterUser = tw.showUser(newDelUser);
                     db.desactivateUserById(twitterUser.getId());
                     tw.destroyFriendship(twitterUser.getId()); // ver este metodo en accion.. la idea es dejar de seguir*************
-                    updateTweetString = _user + " ¡Usuario Eliminado! " + TENDENCE;
+                    finalTweetStringResponse.append(_user).append(" ¡Usuario Eliminado! ").append(TENDENCE);
                 } else if (value.equals(TweetFlag.Value.MOD)) { // farta*******************************************
                     //diferente
-                    
-                    updateTweetString = _user + " ¡Usuario Modificado! " + TENDENCE;
+                    finalTweetStringResponse.append(_user).append(" ¡Usuario Modificado! " ).append(TENDENCE);
+
                 } else {
                     error = true;
+                    warn("User value does't founded");
                 }
                 break;
             case NULL:
             default:
                 error = true;
+                warn("Flag value does't founded");
         }
-        if (!error) {
+        debug("analizeAndRespond[finalTweetStringResponse]=" + finalTweetStringResponse.toString());
+        if (!error) { // el usuario es la casa misma plix
+            finalTweetStringResponse.append(" ").append(tweetCount.getHexHashTagCount());
             if (directMessage) { // respondo  solo al usuario ya que es un mensaje directo
-                tw.sendDirectMessage(user.getId(), updateTweetString);
+                sendDm(user.getId(),finalTweetStringResponse.toString());
             } else if (private_message) { // es de el tipo privado ej:usuario modificado
-                tw.sendDirectMessage(user.getId(), updateTweetString);
+                sendDm(user.getId(),finalTweetStringResponse.toString());
             } else if (com.isActivated()) { // en caso de estar modo comunitario lo envio a todos
-                tw.updateStatus(updateTweetString);
-            } else { // envio mensajes privados a todos los usuarios "amigos". a partir de la bd para menor conjestion
+                sendT(finalTweetStringResponse.toString());
+            } else {// Esto solo acurre cuand otengo que informar algo importante pero no esta el modo comunitario activado 
+                // envio mensajes privados a todos los usuarios "amigos". a partir de la bd para menor conjestion
                 for (TwitterUser u : db.getAllUsers()) { // a que tipo de usuario se lo envio !?!?!??!---------
                     if (u.isActivado()) {
-                        tw.sendDirectMessage(u.getIdTwitterUser(), updateTweetString);
+                        sendDm(u.getIdTwitterUser(),finalTweetStringResponse.toString());
                     }
                 }
             }
@@ -212,6 +312,30 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
 
     }
 
+    private void sendDm(long idDestiny, String text) {
+        try {
+            long superUserId = db.getSuperAdminId();
+            DirectMessage dm = tw.sendDirectMessage(idDestiny, text);
+            db.add(new SimpleDirectMessage(this, dm.getId(), superUserId,null, text, Calendar.getInstance().getTimeInMillis()));
+            tweetCount.incementCount();
+        } catch (TwitterException ex) {
+            error(ex.toString(),ex);
+        }
+    }
+
+    private void sendT(String text) {
+        try {
+            long superUserId = db.getSuperAdminId();
+            Status updateStatus = tw.updateStatus(text);
+            SimpleMention sm = new SimpleMention(this, updateStatus.getId(), superUserId,
+                    null, text, Calendar.getInstance().getTimeInMillis());
+            db.add(sm);
+            tweetCount.incementCount();
+        } catch (TwitterException ex) {
+            error(ex.toString(),ex);
+        }
+    }
+
     /**
      * IO DEVICE (HARDWARE) MESSAGE
      * @param device
@@ -219,20 +343,56 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
     @Override
     public void recivedIOEvent(DeviceSensor device) {
         TweetMyHomeDevices.Sensor sensorFired = null;
-        for(TweetMyHomeDevices.Sensor s : tmhd.getSensor()){
-            if(s.getAttachedPin().intValue() == device.getPin() ){
+        for(TweetMyHomeDevices.Sensor s : tmh_device_xml.getSensor()){
+            if(s.getAttachedPin().intValue() == device.getPin() ){ // se busca por pin
                 sensorFired = s;
                 break; // ya que no pueden existir otros sensores
             }
         }
         if(sensorFired != null){
-            debug("Evend catched ["+sensorFired.getName()+"] in pin ["+sensorFired.getAttachedPin()+"]");
+            debug("Evend catched ["+sensorFired.getName()+"] in pin ["+sensorFired.getAttachedPin()+"] activated ["+device.isActivated()+"]");
+            int sensorIdByPin = db.getSensorIdByPin(sensorFired.getAttachedPin().longValue());
+            if (sensorIdByPin != TweetMyHomeDatabase.NOT_EXIST) {
+                HistorySensor historySensor
+                        = new HistorySensor(sensorIdByPin, Calendar.getInstance().getTimeInMillis(), device.isActivated() ? 1 : 0, db.getSuperAdminId());
+                db.add(historySensor);
+                debug(historySensor.toString());
+            } else {
+                warn("Sensor pin [" + sensorFired.getAttachedPin().longValue() + "] does't founded in DB. event not register");
+            }            
+            if(sec.isEnabled()){
+                sect.estimulate();
+                info("Sensor fire ["+sensorFired.getName()+","+sensorFired.getLocation()+"], thread level : " + sect.getRiskByEstimulation().name());
+                if(sect.isEstimulationOverThreshold()){ // WARNING
+                    warn("Estimulation over threshold !!");
+                    if(com.isActivated()){
+                        String warnPublicMessage = "Hogar en riesgo ["+sect.getRiskByEstimulation().name()+"] " + TENDENCE + " " + tweetCount.getHexHashTagCount();
+                        info("Comunity mode is enabled , Tweeting public message");
+                        try {
+                            tw.updateStatus(warnPublicMessage);
+                            db.add(new SimpleMention(this, sensorIdByPin, sensorIdByPin, TENDENCE, TENDENCE, Calendar.getInstance().getTimeInMillis()));
+                        } catch (TwitterException ex) {
+                            error(ex.toString(),ex);
+                        }
+                    }
+                    info("Sending private message to all activated users");
+                    db.getAllUsers().forEach(u -> {
+                        String warnPrivateMessage = "Hogar en riesgo ["+sect.getRiskByEstimulation().name()+"]" + " " + tweetCount.getHexHashTagCount();;
+                        if (u.isActivado() && (u.getRol() != UserRol.super_admin) ) {                            
+                            try {
+                                tw.sendDirectMessage(u.getIdTwitterUser(), warnPrivateMessage);
+                            } catch (TwitterException ex) {
+                                error(ex.toString(),ex);
+                            }
+                        }
+                    });
+                }
+            }
             //**************************************************************************************
-            
+
         } else {
             error("Event sensor [" + device.toString() + "] not founded in Tweetmyhome devices");
         }
-        debug(device.toString());
     }
     /**
      * funcion se dispara cuando te mencionan sin ser amigo
@@ -243,14 +403,14 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
     @Override
     public void onStatus(Status status) {
         User user = status.getUser();
-        debug("onStatus @" + status.getUser().getScreenName() + " - " + status.getText());
+        debug("onStatus @" + status.getUser().getScreenName() + " : " + status.getText());
         if (TwitterUserUtil.equals(status.getUser().getScreenName(), p.getValueByKey(Key.twitterSuperUser))) {
             debug("Own tweet detected... EXITING function");
             return;
         }
         TweetStringAnalizer tsa;
         try {
-            tsa = new TweetStringAnalizer(status.getText());            
+            tsa = new TweetStringAnalizer(status.getText(),tweetDictionary);            
         } catch (TweetStringException ex) {
             error(ex.toString(),ex);
             return;
@@ -264,48 +424,51 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
                     break;
                 }
             }
-            if(isHomeMencioned){
-                if(!tsa.isErrorFounded()){
-                    try {                    
-                        analizeAndRespond(user, tsa, false);
-                    } catch (TwitterException ex) {
-                        error(ex.toString(), ex);
-                    } catch (TweetMyHomeException ex) {
+            if (isHomeMencioned) {
+                if (!tsa.isErrorFounded()) {
+                    try {
+                        db.add(new SimpleMention(this, status.getId(),
+                                status.getUser().getId(), null, status.getText(), Calendar.getInstance().getTimeInMillis()));
+                        analyzeAndRespond(user, tsa, false);
+                    } catch (TwitterException | TweetMyHomeException ex) {
                         error(ex.toString(), ex);
                     }
                 } else {
                     error(tsa.getErrorString().toString());
                 }
-            }else{
+            } else{
                 debug("Users were mencioned, but not this home...");
             }        
         }else{
             debug("None user Mencioned...");
         }
     }
+    
     /**
      * Si me llegan mensajes significa que lo estoy siguiendo...
      * @param directMessage 
      */
     @Override
     public void onDirectMessage(DirectMessage directMessage) {
-        if(TwitterUserUtil.equals(directMessage.getSender().getScreenName(),
-                p.getValueByKey(Key.twitterSuperUser))){
+        String text = directMessage.getText();
+        debug("onDirectMessage text: @" + directMessage.getSender().getScreenName() + " : " + text);
+        if (TwitterUserUtil.equals(directMessage.getSender().getScreenName(),
+                p.getValueByKey(Key.twitterSuperUser))) {
             debug("Own tweet detected...");
             return;
         }
-        String text = directMessage.getText();
-        User user = directMessage.getSender();
-        debug("onDirectMessage text:" + text);
+
+        User user = directMessage.getSender();        
         TweetStringAnalizer tsa;
         try {
-            tsa = new TweetStringAnalizer(text);
-            if(!tsa.isErrorFounded()){
-                analizeAndRespond(user, tsa, true);
-            }else{ // pasa si no reconose el mensaje
+            tsa = new TweetStringAnalizer(text, tweetDictionary);
+            if (!tsa.isErrorFounded()) {
+                db.add(new SimpleDirectMessage(this, directMessage.getId(),
+                        directMessage.getSenderId(), null, text, Calendar.getInstance().getTimeInMillis()));
+                analyzeAndRespond(user, tsa, true);
+            } else { // pasa si no reconose el mensaje
                 error(tsa.getErrorString().toString());
-            }
-            
+            }            
         } catch (TweetStringException | TwitterException | TweetMyHomeException ex) {
             error(ex.toString(), ex);
         }
@@ -319,6 +482,7 @@ public final class TweetMyHome implements IODeviceEventListener,UserStreamListen
         debug("onFriendList");
         try {
             db.processTwiterUsersFromTwitterIds(friendIds, tw);
+            //integrityCheckSuperAdmin();
         } catch (TwitterException ex) {
             error(ex.toString(),ex);
         }

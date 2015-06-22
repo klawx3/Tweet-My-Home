@@ -12,16 +12,17 @@ import java.util.Date;
  * @author Klaw Strife
  */
 public class HistorySensor {
-    
+
+
     private final Integer idHistory;
     private final int idSensor;
-    private final Date date;
+    private final long date;
     private final int value;
-    private final int idTwitterUser;
+    private final long idTwitterUser;
 
 
 
-    public HistorySensor(int id,int idSensor, Date fecha, int valor, int idUsuarioTwitter) {
+    public HistorySensor(int id,int idSensor, long fecha, int valor, long idUsuarioTwitter) {
         this.idHistory = id;
         this.idSensor = idSensor;
         this.date = fecha;
@@ -29,7 +30,7 @@ public class HistorySensor {
         this.idTwitterUser = idUsuarioTwitter;
     }
 
-    public HistorySensor(int idSensor, Date date, int value, int idTwitterUser) {
+    public HistorySensor(int idSensor, long date, int value, long idTwitterUser) {
         idHistory = null;
         this.idSensor = idSensor;
         this.date = date;
@@ -41,7 +42,7 @@ public class HistorySensor {
         return idSensor;
     }
 
-    public Date getDate() {
+    public long getDate() {
         return date;
     }
 
@@ -49,11 +50,15 @@ public class HistorySensor {
         return value;
     }
 
-    public int getIdTwitterUser() {
+    public long getIdTwitterUser() {
         return idTwitterUser;
     }
 
-
+    @Override
+    public String toString() {
+        return "HistorySensor{" + "idHistory=" + idHistory + ", idSensor=" + idSensor + ", date=" + date + ", value=" + value + ", idTwitterUser=" + idTwitterUser + '}';
+    }
+    
 
     
     

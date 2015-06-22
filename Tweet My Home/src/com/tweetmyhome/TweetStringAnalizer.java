@@ -25,7 +25,7 @@ public class TweetStringAnalizer {
     public static final String TWITTER_USER_STRING = "@";
     public static final String TWITTER_HASHTAG_STRING = "#";
     public static final String VARIABLE_STRING_IDENTIFIER = "$";
-    public static final TweetStringDictionary TWEET_STRING_COMMANDS_DIC = new TweetStringDictionary();
+    private final TweetStringDictionary dic ;
     private String formatedRawString; // solo el "comando"
     private String rawString;
     private boolean errorFounded;
@@ -37,7 +37,8 @@ public class TweetStringAnalizer {
 
 
 
-    public TweetStringAnalizer(String rawString) throws TweetStringException {
+    public TweetStringAnalizer(String rawString, final TweetStringDictionary dic) throws TweetStringException {
+        this.dic = dic;
         this.rawString = rawString;
         preAnalisis();//analiza las menciones y usuarios existentes
         analizeString();//analiza solo si existen comandos
@@ -72,7 +73,7 @@ public class TweetStringAnalizer {
      * @throws TweetStringException 
      */
     private void analizeString() throws TweetStringException {
-        for (Entry<String, TweetFlag> commandEntry : TWEET_STRING_COMMANDS_DIC.getCommands().entrySet()) {
+        for (Entry<String, TweetFlag> commandEntry : dic.getCommands().entrySet()) {
             int errorPos = 0;
             boolean errorFound = false;
             StringTokenizer rawStringTokenized = new StringTokenizer(formatedRawString.toLowerCase());
@@ -118,7 +119,7 @@ public class TweetStringAnalizer {
                 TweetVariable var = tweetVariableList.get(0);
                 String variable = var.getVariable();
                 boolean variableFound = false;
-                for (Entry<String, Value> entry : TWEET_STRING_COMMANDS_DIC.getVariableDictionary().entrySet()) {
+                for (Entry<String, Value> entry : dic.getVariableDictionary().entrySet()) {
                     if(entry.getKey().equalsIgnoreCase(variable)){
                         if(variableFound){
                             throw new TweetStringException("Duplicated variables");

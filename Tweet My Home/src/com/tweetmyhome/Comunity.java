@@ -5,6 +5,8 @@
  */
 package com.tweetmyhome;
 
+import com.tweetmyhome.hardware.IOBridge;
+
 /**
  *
  * @author Klaw Strife
@@ -12,17 +14,26 @@ package com.tweetmyhome;
 public class Comunity {
     
     private boolean activated;
+    private IOBridge iob;
 
-    public Comunity(boolean activated) {
+    public Comunity(boolean activated,IOBridge iob) {
         this.activated = activated;
+        this.iob = iob;
     }
 
     public boolean isActivated() {
         return activated;
     }
-
-    public void setActivated(boolean activated) {
-        this.activated = activated;
+    
+    public void activateComunityMode(){
+        activated = true;
+        iob.activateComunityMode();
     }
+    
+    public void desactivateComunityMode(){
+        activated = false;
+        iob.desactivateComunityMode();
+    }
+
     
 }

@@ -11,6 +11,7 @@ import static com.esotericsoftware.minlog.Log.LEVEL_INFO;
 import static com.esotericsoftware.minlog.Log.LEVEL_TRACE;
 import static com.esotericsoftware.minlog.Log.LEVEL_WARN;
 import com.esotericsoftware.minlog.Log.Logger;
+import com.tweetmyhome.util.SODetector;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.DateFormat;
@@ -23,27 +24,83 @@ import java.util.Date;
  */
 public class MyCustomLogger extends Logger {
 
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_BLACK = "\u001B[30m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_PURPLE = "\u001B[35m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+    public static final String ANSI_WHITE = "\u001B[37m";
+
+    private final boolean unixShell;
+
+    public MyCustomLogger() {
+        unixShell = SODetector.isUnix();
+        if (unixShell) {
+            System.out.println("Unix/Linux Shell detected for logger");
+        }
+    }
+
     @Override
     public void log(int level, String category, String message, Throwable ex) {
         StringBuilder builder = new StringBuilder(256);
         builder.append("[");
-        builder.append(DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(new Date()));
+        if (unixShell) {
+            builder.append(ANSI_CYAN);
+            builder.append(DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(new Date()));
+            builder.append(ANSI_RESET);
+        } else {
+            builder.append(DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(new Date()));
+        }
+
         builder.append("]");
         switch (level) {
             case LEVEL_ERROR:
-                builder.append(" ERROR: ");
+                if (unixShell) {
+                    builder.append(ANSI_RED);
+                    builder.append(" ERROR: ");
+                    builder.append(ANSI_RESET);
+                } else{
+                    builder.append(" ERROR: ");
+                }
                 break;
             case LEVEL_WARN:
-                builder.append("  WARN: ");
+                if (unixShell) {
+                    builder.append(ANSI_CYAN);
+                     builder.append("  WARN: ");
+                     builder.append(ANSI_RESET);
+                }else{
+                builder.append("  WARN: ");}
                 break;
             case LEVEL_INFO:
-                builder.append("  INFO: ");
+                if (unixShell) {
+                    builder.append(ANSI_GREEN);
+                    builder.append("  INFO: ");
+                    builder.append(ANSI_RESET);
+                } else {
+                    builder.append("  INFO: ");
+                }
                 break;
             case LEVEL_DEBUG:
-                builder.append(" DEBUG: ");
+                if (unixShell) {
+                    builder.append(ANSI_YELLOW);
+                    builder.append(" DEBUG: ");
+                    builder.append(ANSI_RESET);
+                } else {
+                    builder.append(" DEBUG: ");
+                }
                 break;
             case LEVEL_TRACE:
-                builder.append(" TRACE: ");
+                if (unixShell) {
+                    builder.append(ANSI_GREEN);
+                    builder.append(" TRACE: ");
+                    builder.append(ANSI_RESET);
+                } else {
+                    builder.append(" TRACE: ");
+                }
+
                 break;
         }
         if (category != null) {
@@ -60,5 +117,6 @@ public class MyCustomLogger extends Logger {
         }
         System.out.println(builder);
     }
+    
 
 }

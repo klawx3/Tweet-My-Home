@@ -13,8 +13,11 @@ import java.util.Date;
  */
 public class HistoryComunityMode extends HistorySecurity{
 
-    public HistoryComunityMode(Integer idHistory, boolean active, Date date, int twitterUserId) {
+    public HistoryComunityMode(Integer idHistory, boolean active, long date, long twitterUserId) {
         super(idHistory, active, date, twitterUserId);
+    }
+       public HistoryComunityMode(boolean active, long date, long twitterUserId) {
+        super(null, active, date, twitterUserId);
     }
     
 }

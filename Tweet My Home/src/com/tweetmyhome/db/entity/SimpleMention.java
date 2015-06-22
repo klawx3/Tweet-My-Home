@@ -15,17 +15,17 @@ import twitter4j.Status;
  */
 public class SimpleMention extends AbstractMessage {
 
-    public SimpleMention(Object obj,long messageId,long userId, String screenName, String text, Date createdAt) {
+    public SimpleMention(Object obj,long messageId,long userId, String screenName, String text, long createdAt) {
         super(obj,messageId,userId, screenName, text, createdAt);
     }
 
-    public static SimpleMention getSimpleMention(Object obj,Status status) {
-        return new SimpleMention(obj,status.getId(),
-                status.getUser().getId(),
-                status.getUser().getScreenName(),
-                status.getText(),
-                status.getCreatedAt()
-        );
-    }
+//    public static SimpleMention getSimpleMention(Object obj,Status status) {
+//        return new SimpleMention(obj,status.getId(),
+//                status.getUser().getId(),
+//                status.getUser().getScreenName(),
+//                status.getText(),
+//                status.getCreatedAt().
+//        );
+//    }
 
 }

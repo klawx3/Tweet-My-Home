@@ -5,6 +5,8 @@
  */
 package com.tweetmyhome;
 
+import com.tweetmyhome.hardware.IOBridge;
+
 /**
  *
  * @author Klaw Strife
@@ -13,12 +15,16 @@ public class Security {
 
     private boolean enabled;
     private long enabledMilliStartTime;
+    private IOBridge io;
 
-    public Security(boolean enabled) {
+    public Security(boolean enabled,IOBridge io) {
+        this.io = io;
         this.enabled = enabled;
         if(enabled){
+            io.activateSecurityLed();
             setEnabledMillisStartTime();
         }else{
+            io.desactivateSecurityLed();
             resetMilliStartTime();
         }
     }
@@ -31,6 +37,7 @@ public class Security {
         if (!enabled) {
             this.enabled = true;
             setEnabledMillisStartTime();
+            io.activateSecurityLed();
         }
 
     }
@@ -39,6 +46,7 @@ public class Security {
         if (enabled) {
             enabled = false;
             resetMilliStartTime();
+            io.desactivateSecurityLed();
         }
     }
 

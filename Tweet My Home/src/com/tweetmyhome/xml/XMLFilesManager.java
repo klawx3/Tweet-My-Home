@@ -5,7 +5,9 @@
  */
 package com.tweetmyhome.xml;
 import static com.esotericsoftware.minlog.Log.*;
-import generated.TweetMyHomeDevices;
+import com.tweetmyhome.jaxb.devices.TweetMyHomeDevices;
+import com.tweetmyhome.jaxb.dict.TweetMyHomeDictionary;
+
 import java.io.File;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
@@ -17,6 +19,7 @@ import javax.xml.bind.Unmarshaller;
 public class XMLFilesManager {
 
     public static final String TWEET_MY_HOME_DEVICES_XML_FILE = "tweetmyhome_devices.xml";
+    public static final String  TWEET_MY_HOME_DICTIONARY_XML_FILE = "tweetmyhome_dictionary.xml";
 
     public static TweetMyHomeDevices getTweetMyHomeDevices() {
         TweetMyHomeDevices tmh = null;
@@ -25,25 +28,21 @@ public class XMLFilesManager {
             Unmarshaller unmarshaller = jaxbCtx.createUnmarshaller();
             tmh = (TweetMyHomeDevices) unmarshaller.unmarshal(new File(TWEET_MY_HOME_DEVICES_XML_FILE));
         } catch (javax.xml.bind.JAXBException ex) {
-            error("Sensor file [" + TWEET_MY_HOME_DEVICES_XML_FILE + "] not founded in this context [" + ex.toString()+ "]");
+            error(ex.toString(), ex);
         }
         return tmh;
     }
 
-    /**
-     * Only a testing function
-     * @param d 
-     */
-    public static void setTweetMyHomeDevices(TweetMyHomeDevices d) {
-
+    public static TweetMyHomeDictionary getTweetMyHomeDictionaryCommand() {
+        TweetMyHomeDictionary tmdc = null;
         try {
-            javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance(d.getClass().getPackage().getName());
-            javax.xml.bind.Marshaller marshaller = jaxbCtx.createMarshaller();
-            marshaller.setProperty(javax.xml.bind.Marshaller.JAXB_ENCODING, "UTF-8"); //NOI18N
-            marshaller.setProperty(javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-            marshaller.marshal(d, System.out);
+            JAXBContext jaxbCtx = JAXBContext.newInstance(TweetMyHomeDictionary.class.getPackage().getName());
+            Unmarshaller unmarshaller = jaxbCtx.createUnmarshaller();
+            tmdc = (TweetMyHomeDictionary) unmarshaller.unmarshal(new File(TWEET_MY_HOME_DICTIONARY_XML_FILE));
         } catch (javax.xml.bind.JAXBException ex) {
-            error(null, ex); 
+            error(ex.toString(), ex);
         }
+        return tmdc;
     }
+
 }

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+public static enum Flag {
+    ALARM,      // Cuando se maneja la alarma del hogar
+    COMUNITY,   // cuando se maneja el modo comunitario
+    USER,       // para administrar usuarios
+    NULL        // Indica valor nulo [NO DEVERIA SER USADO]
+}
+
+public static enum Value {
+    ON,         //Activo o activar
+    OFF,        //Desactivo o desactivar
+    STATUS,     //Informacion acerca de...
+    ADD,        //Agregar
+    DEL,        //Eliminar
+    LIST,       //Listado de...
+    BY_VARIABLE,//El valor lo define una variable en el string... deveria hacer referencia a algun valor anterior
+    MOD,        //Modificar algo.. (hasta ahora usuarios)
+    NULL        //Indica valor nulo
+}
+
+commandsMap.put("activar seguridad", alarmOn);
+commandsMap.put("desactivar seguridad", alarmOff);
+commandsMap.put("activar alarma", alarmOn);
+commandsMap.put("desactivar alarma", alarmOff);
+commandsMap.put("estado alarma", alarmStatus);
+commandsMap.put("estado seguridad", alarmStatus);
+commandsMap.put("activar modo comunitario", comunityOn);
+commandsMap.put("desactivar modo comunitario", comunityOff);
+commandsMap.put("alarma $var1", alarmValue);
+commandsMap.put("comunitario $var1", comunityValue);
+commandsMap.put("listar usuarios", userList);
+commandsMap.put("agregar $var1",               userAdd);
+commandsMap.put("eliminar $var1",              userDel);
+commandsMap.put("definir $var1 como $var2",    userMod);
+commandsMap.put("dejar $var1 como $var2",    userMod);
+
+
+variableDictionary.put("on", Value.ON);
+variableDictionary.put("off", Value.OFF);
+variableDictionary.put("estado", Value.STATUS);
+variableDictionary.put("status", Value.STATUS);
+-->
+
+
+<tweet_my_home_dictionary>
+    <!-- COMMANDS -->
+    <command> 
+        <string>dejar $var1 como $var2</string> 
+        <value>MOD</value>
+        <flag>USER</flag> 
+    </command>
+    <command> 
+        <string>definir $var1 como $var2</string> 
+        <value>MOD</value>
+        <flag>USER</flag> 
+    </command>
+    <command> 
+        <string>eliminar $var1</string> 
+        <value>DEL</value>
+        <flag>USER</flag> 
+    </command>
+    <command> 
+        <string>agregar $var1</string> 
+        <value>ADD</value>
+        <flag>USER</flag> 
+    </command>
+    <command> 
+        <string>listar usuarios</string> 
+        <value>LIST</value>
+        <flag>USER</flag> 
+    </command>
+    <command> 
+        <string>comunitario $var1</string> 
+        <value>BY_VARIABLE</value>
+        <flag>COMUNITY</flag> 
+    </command>
+    <command> 
+        <string>alarma $var1</string> 
+        <value>BY_VARIABLE</value>
+        <flag>ALARM</flag> 
+    </command>
+    <command> 
+        <string>desactivar modo comunitario</string> 
+        <value>OFF</value>
+        <flag>COMUNITY</flag> 
+    </command>
+    <command> 
+        <string>activar modo comunitario</string> 
+        <value>ON</value>
+        <flag>COMUNITY</flag> 
+    </command>
+    <command> 
+        <string>estado seguridad</string> 
+        <value>STATUS</value>
+        <flag>ALARM</flag> 
+    </command>
+    <command> 
+        <string>estado alarma</string> 
+        <value>STATUS</value>
+        <flag>ALARM</flag> 
+    </command>
+    <command> 
+        <string>activar alarma</string> 
+        <value>ON</value>
+        <flag>ALARM</flag> 
+    </command>
+    
+    <command>
+        <string>desactivar alarma</string>
+        <value>OFF</value>
+        <flag>ALARM</flag>
+    </command>
+    
+    <command>
+        <string>activar seguridad</string>
+        <value>ON</value>
+        <flag>ALARM</flag>
+    </command>
+    
+    <command>
+        <string>desactivar seguridad</string>
+        <value>ON</value>
+        <flag>ALARM</flag>
+    </command>
+    <!-- VARIABLES -->
+    <variable>
+        <string>1</string>
+        <value>ON</value>
+    </variable>
+    
+    <variable>
+        <string>true</string>
+        <value>ON</value>
+    </variable>
+    
+    <variable>
+        <string>on</string>
+        <value>ON</value>
+    </variable>
+    
+    <variable>
+        <string>estado</string>
+        <value>STATUS</value>
+    </variable>
+    
+    <variable>
+        <string>status</string>
+        <value>STATUS</value>
+    </variable>
+    
+    <variable>
+        <string>off</string>
+        <value>OFF</value>
+    </variable>
+    <variable>
+        <string>0</string>
+        <value>OFF</value>
+    </variable>
+    
+    
+</tweet_my_home_dictionary>

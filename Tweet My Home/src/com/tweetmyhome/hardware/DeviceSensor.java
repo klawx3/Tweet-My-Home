@@ -13,6 +13,8 @@ import java.util.EventObject;
  */
 public class DeviceSensor extends EventObject {
 
+
+
     private final int pin;
     private final boolean activated;
 
@@ -30,6 +32,9 @@ public class DeviceSensor extends EventObject {
         return activated;
     }
 
-    
+    @Override
+    public String toString() {
+        return "DeviceSensor{" + "pin=" + pin + ", activated=" + activated + '}';
+    }
 
 }
